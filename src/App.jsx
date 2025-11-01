@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Home from './components/Home';
 import './App.css';
@@ -12,8 +13,8 @@ function App() {
       <Router>
         <div className="App">
           <Routes>
-            {/* Default redirect to login */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            {/* Landing page */}
+            <Route path="/" element={<LandingPage />} />
             
             {/* Login route */}
             <Route path="/login" element={<Login />} />
@@ -28,8 +29,8 @@ function App() {
               } 
             />
             
-            {/* Catch all route - redirect to home if authenticated, login if not */}
-            <Route path="*" element={<Navigate to="/home" replace />} />
+            {/* Catch all route - redirect to landing page */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </Router>
