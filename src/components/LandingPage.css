@@ -2,7 +2,7 @@
 .landing-page {
   width: 100%;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #1a1a1a;
   overflow-x: hidden;
 }
 
@@ -12,9 +12,10 @@
   top: 0;
   left: 0;
   right: 0;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(26, 26, 26, 0.98);
   backdrop-filter: blur(10px);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 20px rgba(255, 107, 53, 0.2);
+  border-bottom: 2px solid #FF6B35;
   z-index: 1000;
   padding: 1rem 0;
 }
@@ -40,11 +41,12 @@
 
 .logo h1 {
   font-size: 1.8rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: white;
   margin: 0;
+}
+
+.logo h1 span {
+  color: #FF6B35;
 }
 
 .nav-links {
@@ -54,19 +56,19 @@
 }
 
 .nav-links a {
-  color: #333;
+  color: #e0e0e0;
   text-decoration: none;
   font-weight: 500;
   transition: color 0.3s;
 }
 
 .nav-links a:hover {
-  color: #667eea;
+  color: #FF6B35;
 }
 
 .login-btn {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
   color: white;
   border: none;
   border-radius: 25px;
@@ -77,7 +79,7 @@
 
 .login-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 5px 20px rgba(255, 107, 53, 0.4);
 }
 
 /* Hero Section */
@@ -108,7 +110,7 @@
 }
 
 .brand-name {
-  background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+  background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -145,22 +147,24 @@
 }
 
 .cta-primary {
-  background: white;
-  color: #667eea;
+  background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+  color: white;
+  border: 2px solid transparent;
 }
 
 .cta-primary:hover {
   transform: translateY(-3px);
-  box-shadow: 0 10px 30px rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 30px rgba(255, 107, 53, 0.3);
 }
 
 .cta-secondary {
   background: transparent;
   color: white;
+  border: 2px solid #FF6B35;
 }
 
 .cta-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 107, 53, 0.1);
 }
 
 /* Hero Illustration */
@@ -220,7 +224,7 @@
 /* Features Section */
 .features-section {
   padding: 80px 2rem;
-  background: white;
+  background: #2a2a2a;
 }
 
 .section-container {
@@ -235,13 +239,13 @@
 
 .section-header h2 {
   font-size: 2.5rem;
-  color: #333;
+  color: white;
   margin-bottom: 1rem;
 }
 
 .section-header p {
   font-size: 1.2rem;
-  color: #666;
+  color: #b0b0b0;
 }
 
 .features-grid {
@@ -252,14 +256,16 @@
 
 .feature-card {
   padding: 2rem;
-  background: #f8f9fa;
+  background: #1a1a1a;
   border-radius: 15px;
   transition: transform 0.3s, box-shadow 0.3s;
+  border: 2px solid #404040;
 }
 
 .feature-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 30px rgba(255, 107, 53, 0.2);
+  border-color: #FF6B35;
 }
 
 .feature-icon {
@@ -269,19 +275,19 @@
 
 .feature-card h3 {
   font-size: 1.5rem;
-  color: #333;
+  color: white;
   margin-bottom: 1rem;
 }
 
 .feature-card p {
-  color: #666;
+  color: #b0b0b0;
   line-height: 1.6;
 }
 
 /* Benefits Section */
 .benefits-section {
   padding: 80px 2rem;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: #1a1a1a;
 }
 
 .benefits-content {
@@ -293,7 +299,7 @@
 
 .benefits-text h2 {
   font-size: 2.5rem;
-  color: #333;
+  color: white;
   margin-bottom: 2rem;
 }
 
@@ -310,28 +316,29 @@
 
 .benefit-text h4 {
   font-size: 1.3rem;
-  color: #333;
+  color: white;
   margin-bottom: 0.5rem;
 }
 
 .benefit-text p {
-  color: #666;
+  color: #b0b0b0;
   line-height: 1.6;
 }
 
 .stats-showcase {
-  background: white;
+  background: #2a2a2a;
   padding: 3rem;
   border-radius: 20px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   display: grid;
   gap: 2rem;
+  border: 2px solid #FF6B35;
 }
 
 .stat-item {
   text-align: center;
   padding: 1.5rem;
-  border-bottom: 3px solid #667eea;
+  border-bottom: 3px solid #FF6B35;
 }
 
 .stat-item:last-child {
@@ -340,19 +347,19 @@
 
 .stat-item h3 {
   font-size: 3rem;
-  color: #667eea;
+  color: #FF6B35;
   margin-bottom: 0.5rem;
 }
 
 .stat-item p {
-  color: #666;
+  color: #b0b0b0;
   font-size: 1.1rem;
 }
 
 /* About Section */
 .about-section {
   padding: 80px 2rem;
-  background: white;
+  background: #2a2a2a;
 }
 
 .about-section .section-header {
@@ -363,13 +370,13 @@
 .about-section .section-header p {
   font-size: 1.1rem;
   line-height: 1.8;
-  color: #555;
+  color: #b0b0b0;
 }
 
 /* CTA Section */
 .cta-section {
   padding: 80px 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
   color: white;
 }
 
@@ -394,9 +401,9 @@
   padding: 1.2rem 3rem;
   font-size: 1.2rem;
   font-weight: 600;
-  background: white;
-  color: #667eea;
-  border: none;
+  background: #1a1a1a;
+  color: #FF6B35;
+  border: 2px solid #1a1a1a;
   border-radius: 30px;
   cursor: pointer;
   transition: all 0.3s;
@@ -404,14 +411,16 @@
 
 .cta-button:hover {
   transform: translateY(-3px);
-  box-shadow: 0 10px 30px rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  background: white;
 }
 
 /* Footer */
 .landing-footer {
-  background: #2d3748;
+  background: #0d0d0d;
   color: white;
   padding: 3rem 2rem 1rem;
+  border-top: 2px solid #FF6B35;
 }
 
 .footer-container {
@@ -458,20 +467,20 @@
 }
 
 .footer-section ul li a {
-  color: #cbd5e0;
+  color: #b0b0b0;
   text-decoration: none;
   transition: color 0.3s;
 }
 
 .footer-section ul li a:hover {
-  color: white;
+  color: #FF6B35;
 }
 
 .footer-bottom {
   text-align: center;
   padding-top: 2rem;
-  border-top: 1px solid #4a5568;
-  color: #cbd5e0;
+  border-top: 1px solid #404040;
+  color: #808080;
 }
 
 /* Responsive Design */

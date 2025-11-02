@@ -8,13 +8,15 @@
 
 /* Header Styles */
 .home-header {
-  background: linear-gradient(135deg, #4299E1 0%, #3182CE 100%);
+  background: #1a1a1a;
   color: white;
   padding: 16px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   position: sticky;
   top: 0;
   z-index: 100;
+  margin-left: 240px;
+  border-bottom: 3px solid #FF6B35;
 }
 
 .header-content {
@@ -90,19 +92,47 @@
 /* Sidebar Styles */
 .dashboard-sidebar {
   width: 240px;
-  background: white;
-  border-right: 1px solid #E2E8F0;
+  background: #1a1a1a;
+  border-right: 3px solid #FF6B35;
   padding: 0;
   position: fixed;
   left: 0;
-  top: 70px;
-  height: calc(100vh - 70px);
+  top: 0;
+  height: 100vh;
   overflow-y: auto;
   z-index: 50;
 }
 
+.sidebar-logo {
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid #333;
+  background: #1a1a1a;
+}
+
+.logo-svg {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 10px;
+  display: block;
+}
+
+.logo-text h2 {
+  color: white;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+.logo-text h2 span {
+  color: #FF6B35;
+  font-weight: 300;
+}
+
 .sidebar-nav {
   padding: 16px 0;
+  margin-top: 0;
 }
 
 .nav-item {
@@ -114,7 +144,7 @@
   background: transparent;
   border: none;
   border-left: 3px solid transparent;
-  color: #4A5568;
+  color: #b0b0b0;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -123,14 +153,14 @@
 }
 
 .nav-item:hover {
-  background: #F7FAFC;
-  color: #2D3748;
+  background: #2a2a2a;
+  color: #FF6B35;
 }
 
 .nav-item.active {
-  background: #EDF2F7;
-  border-left-color: #4299E1;
-  color: #4299E1;
+  background: #2a2a2a;
+  border-left-color: #FF6B35;
+  color: #FF6B35;
   font-weight: 600;
 }
 
@@ -160,7 +190,7 @@
 
 /* Welcome Banner */
 .welcome-banner {
-  background: linear-gradient(135deg, #4299E1 0%, #3182CE 100%);
+  background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
@@ -168,7 +198,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.2);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
 }
 
 .welcome-content h2 {
@@ -287,7 +317,7 @@
 }
 
 .stat-link {
-  color: #4299E1;
+  color: #FF6B35;
   cursor: pointer;
   font-weight: 500;
 }
@@ -300,7 +330,7 @@
 .progress-bar {
   width: 100%;
   height: 6px;
-  background: rgba(49, 130, 206, 0.2);
+  background: rgba(255, 107, 53, 0.2);
   border-radius: 3px;
   margin: 8px 0 6px 0;
   overflow: hidden;
@@ -308,7 +338,7 @@
 
 .progress-fill {
   height: 100%;
-  background: #4299E1;
+  background: #FF6B35;
   border-radius: 3px;
   transition: width 0.3s ease;
 }
@@ -391,7 +421,7 @@
 .log-time-button {
   width: 100%;
   padding: 14px;
-  background: #48BB78;
+  background: #FF6B35;
   color: white;
   border: none;
   border-radius: 8px;
@@ -403,16 +433,16 @@
 }
 
 .log-time-button:hover {
-  background: #38A169;
+  background: #F7931E;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
 }
 
 .request-adjustment-link {
   width: 100%;
   padding: 10px;
   background: transparent;
-  color: #4299E1;
+  color: #FF6B35;
   border: none;
   font-size: 13px;
   font-weight: 600;
@@ -464,7 +494,7 @@
 
 .apply-filter-btn {
   padding: 8px 16px;
-  background: #4299E1;
+  background: #FF6B35;
   color: white;
   border: none;
   border-radius: 6px;
@@ -475,7 +505,7 @@
 }
 
 .apply-filter-btn:hover {
-  background: #3182CE;
+  background: #F7931E;
 }
 
 .activity-table {
@@ -535,8 +565,8 @@
 .view-btn {
   padding: 6px 16px;
   background: transparent;
-  color: #4299E1;
-  border: 1px solid #4299E1;
+  color: #FF6B35;
+  border: 1px solid #FF6B35;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
@@ -545,7 +575,7 @@
 }
 
 .view-btn:hover {
-  background: #4299E1;
+  background: #FF6B35;
   color: white;
 }
 
@@ -588,7 +618,7 @@
   
   .nav-item.active {
     border-left-color: transparent;
-    border-bottom-color: #4299E1;
+    border-bottom-color: #FF6B35;
   }
   
   .nav-text {

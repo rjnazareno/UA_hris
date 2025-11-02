@@ -29,6 +29,18 @@ const Home = () => {
       </header>
       <div className="dashboard-layout">
         <aside className="dashboard-sidebar">
+          <div className="sidebar-logo">
+            <svg viewBox="0 0 200 200" className="logo-svg">
+              <g transform="translate(100, 60)">
+                <path d="M -25 0 L -15 -40 L 15 -40 L 25 0 Z" fill="#FF6B35"/>
+                <path d="M -15 -40 L -5 -50 L 5 -50 L 15 -40 Z" fill="#FF6B35"/>
+                <polygon points="0,-10 -15,10 15,10" fill="#1a1a1a"/>
+              </g>
+            </svg>
+            <div className="logo-text">
+              <h2>Nova<span>HR</span></h2>
+            </div>
+          </div>
           <nav className="sidebar-nav">
             <button className={`nav-item ${activeMenu === 'home' ? 'active' : ''}`} onClick={() => setActiveMenu('home')}>
               <span className="nav-icon">🏠</span>

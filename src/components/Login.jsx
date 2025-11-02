@@ -82,7 +82,16 @@ const Login = () => {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <h1>HRIS System</h1>
+          <div className="login-logo">
+            <svg viewBox="0 0 200 200" className="logo-svg">
+              <g transform="translate(100, 60)">
+                <path d="M -25 0 L -15 -40 L 15 -40 L 25 0 Z" fill="#FF6B35"/>
+                <path d="M -15 -40 L -5 -50 L 5 -50 L 15 -40 Z" fill="#FF6B35"/>
+                <polygon points="0,-10 -15,10 15,10" fill="#1a1a1a"/>
+              </g>
+            </svg>
+          </div>
+          <h1>Nova<span className="orange-text">HR</span></h1>
           <h2>Human Resource Information System</h2>
           <p>Please sign in to access your account</p>
         </div>

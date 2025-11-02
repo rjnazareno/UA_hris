@@ -11,8 +11,7 @@ const LandingPage = () => {
       <nav className="landing-nav">
         <div className="nav-container">
           <div className="logo">
-            <span className="logo-icon">🌙</span>
-            <h1>Luna</h1>
+            <h1>Nova<span>HR</span></h1>
           </div>
           <div className="nav-links">
             <a href="#features">Features</a>
@@ -30,13 +29,13 @@ const LandingPage = () => {
         <div className="hero-content">
           <div className="hero-text">
             <h1 className="hero-title">
-              Welcome to <span className="brand-name">Luna</span>
+              Welcome to <span className="brand-name">NovaHR</span>
             </h1>
             <p className="hero-subtitle">
               Your Complete Human Resource Information System
             </p>
             <p className="hero-description">
-              Streamline your HR operations with Luna - the modern, intuitive HRIS 
+              Streamline your HR operations with NovaHR - the modern, intuitive HRIS 
               designed to simplify employee management, payroll, and workforce analytics.
             </p>
             <div className="hero-cta">
@@ -186,11 +185,11 @@ const LandingPage = () => {
       <section id="about" className="about-section">
         <div className="section-container">
           <div className="section-header">
-            <h2>About Luna HRIS</h2>
+            <h2>About NovaHR HRIS</h2>
             <p>
-              Luna is a comprehensive Human Resource Information System designed to 
+              NovaHR is a comprehensive Human Resource Information System designed to 
               modernize and streamline your HR operations. Built with the latest 
-              technologies and best practices, Luna empowers organizations to manage 
+              technologies and best practices, NovaHR empowers organizations to manage 
               their most valuable asset - their people.
             </p>
           </div>
@@ -201,7 +200,7 @@ const LandingPage = () => {
       <section className="cta-section">
         <div className="cta-container">
           <h2>Ready to Transform Your HR Operations?</h2>
-          <p>Join thousands of companies already using Luna to streamline their HR processes</p>
+          <p>Join thousands of companies already using NovaHR to streamline their HR processes</p>
           <button onClick={() => navigate('/login')} className="cta-button">
             Get Started Now
           </button>
@@ -214,8 +213,7 @@ const LandingPage = () => {
           <div className="footer-content">
             <div className="footer-section">
               <div className="footer-logo">
-                <span className="logo-icon">🌙</span>
-                <h3>Luna HRIS</h3>
+                <h3>Nova<span style={{color: '#FF6B35'}}>HR</span> HRIS</h3>
               </div>
               <p>Modern HR management for modern businesses</p>
             </div>
@@ -245,7 +243,7 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; 2025 Luna HRIS. All rights reserved.</p>
+            <p>&copy; 2025 NovaHR HRIS. All rights reserved.</p>
           </div>
         </div>
       </footer>
