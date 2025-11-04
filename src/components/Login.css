@@ -24,27 +24,27 @@
 }
 
 .login-logo {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .logo-svg {
-  width: 100px;
-  height: 100px;
+  width: 60px;
+  height: 60px;
   margin: 0 auto;
   display: block;
 }
 
 .login-header h1 {
   color: white;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
-  margin: 0 0 5px 0;
-  letter-spacing: 1px;
+  margin: 0 0 4px 0;
+  letter-spacing: 0.5px;
 }
 
 .orange-text {
   color: #FF6B35;
-  font-weight: 300;
+  font-weight: 400;
 }
 
 .login-header h2 {

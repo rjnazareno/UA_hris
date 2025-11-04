@@ -15,8 +15,7 @@ const Home = () => {
       <header className="home-header">
         <div className="header-content">
           <div className="logo-section">
-            <h1>🌙 Luna HRIS</h1>
-            <span className="subtitle">Human Resource Information System</span>
+            <h1>Employee Dashboard</h1>
           </div>
           <div className="user-section">
             <div className="user-info">
