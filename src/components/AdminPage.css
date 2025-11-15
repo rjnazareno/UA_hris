@@ -1,0 +1,390 @@
+/* Admin Page Styles */
+.admin-container {
+  min-height: 100vh;
+  background-color: #f0f4f8;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Admin Header */
+.admin-header {
+  background: #1a1a1a;
+  color: white;
+  padding: 8px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  position: fixed;
+  top: 0;
+  left: 240px;
+  right: 0;
+  z-index: 100;
+  border-bottom: 3px solid #FF6B35;
+  width: calc(100% - 240px);
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: visible;
+}
+
+.admin-header .header-content {
+  max-width: 100%;
+  margin: 0;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 50px;
+  min-width: 0;
+  overflow: visible;
+  gap: 20px;
+}
+
+/* Admin Layout */
+.admin-layout {
+  display: flex;
+  flex: 1;
+  width: 100%;
+}
+
+/* Admin Sidebar */
+.admin-sidebar {
+  width: 240px;
+  background: #1a1a1a;
+  border-right: 3px solid #FF6B35;
+  padding: 0;
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 50;
+  flex-shrink: 0;
+}
+
+/* Admin Main Content */
+.admin-main {
+  flex: 1;
+  margin-left: 240px;
+  margin-top: 50px;
+  padding: 24px;
+  overflow-y: auto;
+  width: calc(100% - 240px);
+}
+
+.admin-content {
+  width: 100%;
+  max-width: 100%;
+}
+
+.section-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2D3748;
+  margin-bottom: 24px;
+}
+
+/* Stats Grid */
+.stat-pending .stat-icon-wrapper {
+  background: #FED7AA;
+}
+
+.stat-approved .stat-icon-wrapper {
+  background: #C6F6D5;
+}
+
+.stat-employees .stat-icon-wrapper {
+  background: #BEE3F8;
+}
+
+.stat-overtime .stat-icon-wrapper {
+  background: #FBD38D;
+}
+
+/* Dashboard Summary */
+.dashboard-summary {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #E2E8F0;
+}
+
+.dashboard-summary h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2D3748;
+  margin-bottom: 20px;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #F7FAFC;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.activity-item:hover {
+  background: #EDF2F7;
+}
+
+.activity-icon {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 50%;
+}
+
+.activity-details p {
+  margin: 0 0 4px 0;
+  color: #2D3748;
+  font-size: 14px;
+}
+
+.activity-time {
+  font-size: 12px;
+  color: #718096;
+}
+
+/* Requests Table */
+.requests-table {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #E2E8F0;
+  overflow-x: auto;
+}
+
+.requests-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.requests-table thead {
+  background: #F7FAFC;
+}
+
+.requests-table th {
+  padding: 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #E2E8F0;
+}
+
+.requests-table td {
+  padding: 14px 12px;
+  font-size: 14px;
+  color: #4A5568;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.requests-table tbody tr:hover {
+  background: #F7FAFC;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.approve-btn,
+.reject-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.approve-btn {
+  background: #C6F6D5;
+  color: #22543D;
+}
+
+.approve-btn:hover {
+  background: #9AE6B4;
+}
+
+.reject-btn {
+  background: #FED7D7;
+  color: #742A2A;
+}
+
+.reject-btn:hover {
+  background: #FEB2B2;
+}
+
+/* Status Badges */
+.status-badge.pending {
+  background: #FED7AA;
+  color: #7C2D12;
+}
+
+.status-badge.completed {
+  background: #C6F6D5;
+  color: #22543D;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .admin-layout {
+    flex-direction: column;
+  }
+  
+  .admin-sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    top: 0;
+    left: 0;
+    border-right: none;
+    border-bottom: 1px solid #E2E8F0;
+  }
+  
+  .admin-header {
+    left: 0;
+    width: 100%;
+  }
+  
+  .admin-main {
+    margin-left: 0;
+    width: 100%;
+  }
+  
+  .sidebar-nav {
+    display: flex;
+    overflow-x: auto;
+    padding: 8px;
+  }
+  
+  .nav-item {
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    min-width: 80px;
+    text-align: center;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+  }
+  
+  .nav-item.active {
+    border-left-color: transparent;
+    border-bottom-color: #FF6B35;
+  }
+}
+
+/* User Section & Dropdown */
+.admin-header .user-section {
+  position: relative;
+  z-index: 200;
+}
+
+.admin-header .user-dropdown {
+  position: relative;
+}
+
+.admin-header .dropdown-toggle {
+  background: transparent;
+  border: none;
+  color: #FF6B35;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.admin-header .dropdown-toggle:hover {
+  background: rgba(255, 107, 53, 0.1);
+}
+
+.admin-header .dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  min-width: 200px;
+  z-index: 9999;
+  overflow: hidden;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-header .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: white;
+  color: #2D3748;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease;
+}
+
+.admin-header .dropdown-item:hover {
+  background: #F7FAFC;
+}
+
+.admin-header .dropdown-item.logout {
+  color: #E53E3E;
+}
+
+.admin-header .dropdown-item.logout:hover {
+  background: #FFF5F5;
+}
+
+.admin-header .dropdown-divider {
+  margin: 4px 0;
+  border: none;
+  border-top: 1px solid #E2E8F0;
+}
+
+@media (max-width: 768px) {
+  .admin-main {
+    padding: 16px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+}

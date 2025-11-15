@@ -131,7 +131,7 @@ const LandingPage = () => {
         <div className="section-container">
           <div className="benefits-content">
             <div className="benefits-text">
-              <h2>Why Choose Luna?</h2>
+              <h2>Why Choose NovaHR?</h2>
               <div className="benefit-item">
                 <div className="benefit-icon">✨</div>
                 <div className="benefit-text">

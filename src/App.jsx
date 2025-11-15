@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Home from './components/Home';
+import AdminPage from './components/AdminPage';
 import './App.css';
 
 function App() {
@@ -25,6 +26,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Home />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminPage />
                 </ProtectedRoute>
               } 
             />

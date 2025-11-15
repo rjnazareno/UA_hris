@@ -2,8 +2,8 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+const ProtectedRoute = ({ children, requireAdmin = false }) => {
+  const { isAuthenticated, loading, user } = useAuth();
 
   // Show loading state while checking authentication
   if (loading) {
@@ -40,6 +40,11 @@ const ProtectedRoute = ({ children }) => {
   // Redirect to login if not authenticated
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Check if route requires admin access
+  if (requireAdmin && user?.role !== 'admin') {
+    return <Navigate to="/home" replace />;
   }
 
   // Render the protected component if authenticated
