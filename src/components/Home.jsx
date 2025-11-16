@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { logTimeIn, logTimeOut, getTodayTimeLog, getUserActivities, addActivity } from '../firebase/dbService';
+import { logTimeIn, logTimeOut, getTodayTimeLog, getAllUserActivities, addActivity, getLeaveRequests, getOvertimeRequests, getTimeAdjustments } from '../firebase/dbService';
+import LeaveRequest from './LeaveRequest';
 import './Home.css';
 
 const Home = () => {
@@ -11,40 +12,96 @@ const Home = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pendingRequests, setPendingRequests] = useState(0);
+
+  // Load data function (can be called on mount and at midnight)
+  const loadData = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    
+    // Load today's time log
+    const timeLogResult = await getTodayTimeLog(user.uid);
+    if (timeLogResult.success && timeLogResult.data) {
+      const timeLog = timeLogResult.data;
+      setTimeInOut({
+        timeIn: timeLog.timeIn ? new Date(timeLog.timeIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
+        timeOut: timeLog.timeOut ? new Date(timeLog.timeOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
+      });
+    } else {
+      // No time log for today, reset display
+      setTimeInOut({ timeIn: null, timeOut: null });
+    }
+
+    // Load user activities
+    console.log('Loading activities for user:', user.uid);
+    const activitiesResult = await getAllUserActivities(user.uid, 20);
+    console.log('Activities result:', activitiesResult);
+    if (activitiesResult.success) {
+      const formattedActivities = activitiesResult.data.map(activity => ({
+        id: activity.id,
+        type: activity.type,
+        time: activity.timestamp?.toDate ? new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
+        date: activity.timestamp?.toDate ? formatDate(activity.timestamp.toDate()) : 'N/A',
+        status: activity.status || 'completed',
+      }));
+      console.log('Formatted activities:', formattedActivities);
+      setActivities(formattedActivities);
+    }
+
+    // Load pending requests count
+    let pendingCount = 0;
+    const leaveResult = await getLeaveRequests();
+    if (leaveResult.success) {
+      pendingCount += leaveResult.data.filter(req => req.userId === user.uid && req.status === 'pending').length;
+    }
+    const overtimeResult = await getOvertimeRequests();
+    if (overtimeResult.success) {
+      pendingCount += overtimeResult.data.filter(req => req.userId === user.uid && req.status === 'pending').length;
+    }
+    const adjustmentResult = await getTimeAdjustments();
+    if (adjustmentResult.success) {
+      pendingCount += adjustmentResult.data.filter(req => req.userId === user.uid && req.status === 'pending').length;
+    }
+    setPendingRequests(pendingCount);
+
+    setLoading(false);
+  };
+
+  // Check for midnight and reset time logs
+  useEffect(() => {
+    const checkMidnight = () => {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      
+      const timeUntilMidnight = tomorrow - now;
+      
+      const timer = setTimeout(() => {
+        console.log('Midnight reached - resetting time logs');
+        // Reset time log at midnight
+        setTimeInOut({ timeIn: null, timeOut: null });
+        // Reload data for new day
+        if (user) {
+          loadData();
+        }
+        // Set up next midnight check
+        checkMidnight();
+      }, timeUntilMidnight);
+      
+      return () => clearTimeout(timer);
+    };
+    
+    if (user) {
+      const cleanup = checkMidnight();
+      return cleanup;
+    }
+  }, [user]);
 
   // Load today's time log and activities on component mount
   useEffect(() => {
-    const loadData = async () => {
-      if (!user) return;
-
-      setLoading(true);
-      
-      // Load today's time log
-      const timeLogResult = await getTodayTimeLog(user.uid);
-      if (timeLogResult.success && timeLogResult.data) {
-        const timeLog = timeLogResult.data;
-        setTimeInOut({
-          timeIn: timeLog.timeIn ? new Date(timeLog.timeIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
-          timeOut: timeLog.timeOut ? new Date(timeLog.timeOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
-        });
-      }
-
-      // Load user activities
-      const activitiesResult = await getUserActivities(user.uid, 10);
-      if (activitiesResult.success) {
-        const formattedActivities = activitiesResult.data.map(activity => ({
-          id: activity.id,
-          type: activity.type.replace('_', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-          time: new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-          date: formatDate(activity.timestamp.toDate()),
-          status: 'completed',
-        }));
-        setActivities(formattedActivities);
-      }
-
-      setLoading(false);
-    };
-
+    console.log('User data in Home component:', user);
     loadData();
   }, [user]);
 
@@ -77,14 +134,21 @@ const Home = () => {
   };
 
   const handleTimeIn = async () => {
-    if (!user) return;
+    if (!user) {
+      console.error('No user found');
+      return;
+    }
 
+    console.log('Attempting to log time in for user:', user.uid);
     const result = await logTimeIn(user.uid, user);
+    console.log('Time in result:', result);
+    
     if (result.success) {
       const now = new Date();
       const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
       setTimeInOut(prev => ({ ...prev, timeIn: timeString }));
 
+      console.log('Time in successful, adding activity...');
       // Add activity log
       await addActivity(user.uid, {
         type: 'time_in',
@@ -92,31 +156,41 @@ const Home = () => {
       });
 
       // Refresh activities
-      const activitiesResult = await getUserActivities(user.uid, 10);
+      const activitiesResult = await getAllUserActivities(user.uid, 20);
       if (activitiesResult.success) {
         const formattedActivities = activitiesResult.data.map(activity => ({
           id: activity.id,
-          type: activity.type.replace('_', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-          time: new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-          date: formatDate(activity.timestamp.toDate()),
-          status: 'completed',
+          type: activity.type,
+          time: activity.timestamp?.toDate ? new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
+          date: activity.timestamp?.toDate ? formatDate(activity.timestamp.toDate()) : 'N/A',
+          status: activity.status || 'completed',
         }));
         setActivities(formattedActivities);
       }
+      
+      alert('Time in logged successfully! Check your Firestore console.');
     } else {
+      console.error('Time in failed:', result.error);
       alert('Failed to log time in: ' + result.error);
     }
   };
 
   const handleTimeOut = async () => {
-    if (!user) return;
+    if (!user) {
+      console.error('No user found');
+      return;
+    }
 
+    console.log('Attempting to log time out for user:', user.uid);
     const result = await logTimeOut(user.uid);
+    console.log('Time out result:', result);
+    
     if (result.success) {
       const now = new Date();
       const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
       setTimeInOut(prev => ({ ...prev, timeOut: timeString }));
 
+      console.log('Time out successful, adding activity...');
       // Add activity log
       await addActivity(user.uid, {
         type: 'time_out',
@@ -124,18 +198,21 @@ const Home = () => {
       });
 
       // Refresh activities
-      const activitiesResult = await getUserActivities(user.uid, 10);
+      const activitiesResult = await getAllUserActivities(user.uid, 20);
       if (activitiesResult.success) {
         const formattedActivities = activitiesResult.data.map(activity => ({
           id: activity.id,
-          type: activity.type.replace('_', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-          time: new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-          date: formatDate(activity.timestamp.toDate()),
-          status: 'completed',
+          type: activity.type,
+          time: activity.timestamp?.toDate ? new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
+          date: activity.timestamp?.toDate ? formatDate(activity.timestamp.toDate()) : 'N/A',
+          status: activity.status || 'completed',
         }));
         setActivities(formattedActivities);
       }
+      
+      alert('Time out logged successfully! Check your Firestore console.');
     } else {
+      console.error('Time out failed:', result.error);
       alert('Failed to log time out: ' + result.error);
     }
   };
@@ -228,10 +305,6 @@ const Home = () => {
               <span className="nav-icon">🏠</span>
               <span className="nav-text">Home</span>
             </button>
-            <button className={`nav-item ${activeMenu === 'news' ? 'active' : ''}`} onClick={() => { setActiveMenu('news'); closeSidebar(); }}>
-              <span className="nav-icon">📰</span>
-              <span className="nav-text">News Feed</span>
-            </button>
             <button className={`nav-item ${activeMenu === 'schedule' ? 'active' : ''}`} onClick={() => { setActiveMenu('schedule'); closeSidebar(); }}>
               <span className="nav-icon">📅</span>
               <span className="nav-text">Request Change Schedule</span>
@@ -245,20 +318,31 @@ const Home = () => {
               <span className="nav-text">Leave</span>
             </button>
           </nav>
+          <div className="sidebar-footer">
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-avatar">
+                {(user?.name || user?.username || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div className="sidebar-user-details">
+                <div className="sidebar-user-name">{user?.name || user?.email?.split('@')[0] || 'User'}</div>
+                <div className="sidebar-user-position">
+                  {user?.position || (user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Employee')}
+                </div>
+              </div>
+            </div>
+          </div>
         </aside>
         <main className={`dashboard-main ${!sidebarOpen ? 'sidebar-closed' : ''}`}>
           <div className="dashboard-content">
-            <div className="welcome-banner">
-              <div className="welcome-content">
-                <h2>Welcome back, {user?.name || user?.username} 👋</h2>
-                <p>Ready to stay connected with your team</p>
-              </div>
-              <div className="notifications-badge">
-                <span className="notification-icon">💬</span>
-                <span className="notification-text">You have 15 unread messages</span>
-              </div>
-            </div>
-            <div className="stats-grid">
+            {activeMenu === 'home' && (
+              <>
+                <div className="welcome-banner">
+                  <div className="welcome-content">
+                    <h2>Welcome back, {user?.name || user?.email?.split('@')[0] || 'User'} 👋</h2>
+                    <p>Ready to stay connected with your team</p>
+                  </div>
+                </div>
+                <div className="stats-grid">
               <div className="stat-card stat-leave">
                 <div className="stat-icon-wrapper"><span className="stat-icon">🌴</span></div>
                 <div className="stat-info">
@@ -280,8 +364,8 @@ const Home = () => {
                 <div className="stat-icon-wrapper"><span className="stat-icon">📋</span></div>
                 <div className="stat-info">
                   <h3>All Requests Summary</h3>
-                  <p className="stat-number">0</p>
-                  <span className="stat-label">No pending requests</span>
+                  <p className="stat-number">{pendingRequests}</p>
+                  <span className="stat-label">{pendingRequests === 0 ? 'No pending requests' : `${pendingRequests} pending request${pendingRequests > 1 ? 's' : ''}`}</span>
                 </div>
               </div>
               <div className="stat-card stat-schedule">
@@ -311,8 +395,12 @@ const Home = () => {
                 </div>
                 {!timeInOut.timeIn ? (
                   <button onClick={handleTimeIn} className="log-time-button">Log Time In</button>
-                ) : (
+                ) : !timeInOut.timeOut ? (
                   <button onClick={handleTimeOut} className="log-time-button">Log Time Out</button>
+                ) : (
+                  <button className="log-time-button shift-complete" disabled>
+                    ✓ Shift Complete
+                  </button>
                 )}
                 <button className="request-adjustment-link">Request Time Adjustment</button>
               </div>
@@ -331,23 +419,62 @@ const Home = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {activities.map(activity => (
-                        <tr key={activity.id}>
-                          <td>{activity.type}</td>
-                          <td>{activity.time}</td>
-                          <td>{activity.date}</td>
-                          <td>
-                            <span className={`status-badge ${activity.status}`}>
-                              {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
-                            </span>
+                      {loading ? (
+                        <tr>
+                          <td colSpan="4" style={{textAlign: 'center', padding: '20px', color: '#999'}}>
+                            Loading activities...
                           </td>
                         </tr>
-                      ))}
+                      ) : activities.length === 0 ? (
+                        <tr>
+                          <td colSpan="4" style={{textAlign: 'center', padding: '20px', color: '#999'}}>
+                            No activities yet
+                          </td>
+                        </tr>
+                      ) : (
+                        activities.map(activity => (
+                          <tr key={activity.id}>
+                            <td>{activity.type}</td>
+                            <td>{activity.time}</td>
+                            <td>{activity.date}</td>
+                            <td>
+                              <span className={`status-badge ${activity.status}`}>
+                                {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
+              </>
+            )}
+
+            {activeMenu === 'leave' && <LeaveRequest />}
+
+            {activeMenu === 'news' && (
+              <div style={{padding: '20px', textAlign: 'center'}}>
+                <h2>📰 News Feed</h2>
+                <p>Coming soon...</p>
+              </div>
+            )}
+
+            {activeMenu === 'schedule' && (
+              <div style={{padding: '20px', textAlign: 'center'}}>
+                <h2>📅 Request Change Schedule</h2>
+                <p>Coming soon...</p>
+              </div>
+            )}
+
+            {activeMenu === 'overtime' && (
+              <div style={{padding: '20px', textAlign: 'center'}}>
+                <h2>⏰ Overtime Request</h2>
+                <p>Coming soon...</p>
+              </div>
+            )}
           </div>
         </main>
       </div>

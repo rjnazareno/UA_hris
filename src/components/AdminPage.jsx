@@ -6,8 +6,10 @@ import {
   getOvertimeRequests,
   updateLeaveStatus,
   updateTimeAdjustmentStatus,
-  updateOvertimeStatus
+  updateOvertimeStatus,
+  addActivity
 } from '../firebase/dbService';
+import { getAllEmployees, addEmployee, updateEmployee, deleteEmployee } from '../firebase/employeeService';
 import './AdminPage.css';
 
 const AdminPage = () => {
@@ -17,7 +19,18 @@ const AdminPage = () => {
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [timeAdjustments, setTimeAdjustments] = useState([]);
   const [overtimeRequests, setOvertimeRequests] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [newEmployee, setNewEmployee] = useState({
+    email: '',
+    password: '',
+    name: '',
+    employeeId: '',
+    department: '',
+    position: '',
+    role: 'employee'
+  });
 
   // Load data from Firebase
   useEffect(() => {
@@ -40,6 +53,12 @@ const AdminPage = () => {
       const overtimeResult = await getOvertimeRequests();
       if (overtimeResult.success) {
         setOvertimeRequests(overtimeResult.data);
+      }
+
+      // Load employees
+      const employeesResult = await getAllEmployees();
+      if (employeesResult.success) {
+        setEmployees(employeesResult.data);
       }
 
       setLoading(false);
@@ -80,6 +99,12 @@ const AdminPage = () => {
       if (type === 'leave') {
         result = await updateLeaveStatus(requestId, 'approved');
         if (result.success) {
+          const request = leaveRequests.find(r => r.id === requestId);
+          // Log activity for the employee
+          await addActivity(request.userId, {
+            type: 'Leave Approved',
+            description: `Your ${request.type} request has been approved`,
+          });
           setLeaveRequests(prev => 
             prev.map(req => req.id === requestId ? { ...req, status: 'approved' } : req)
           );
@@ -87,6 +112,12 @@ const AdminPage = () => {
       } else if (type === 'time') {
         result = await updateTimeAdjustmentStatus(requestId, 'approved');
         if (result.success) {
+          const request = timeAdjustments.find(r => r.id === requestId);
+          // Log activity for the employee
+          await addActivity(request.userId, {
+            type: 'Time Adjustment Approved',
+            description: `Your time adjustment request for ${request.date} has been approved`,
+          });
           setTimeAdjustments(prev => 
             prev.map(req => req.id === requestId ? { ...req, status: 'approved' } : req)
           );
@@ -94,6 +125,12 @@ const AdminPage = () => {
       } else if (type === 'overtime') {
         result = await updateOvertimeStatus(requestId, 'approved');
         if (result.success) {
+          const request = overtimeRequests.find(r => r.id === requestId);
+          // Log activity for the employee
+          await addActivity(request.userId, {
+            type: 'Overtime Approved',
+            description: `Your overtime request for ${request.hours} hours has been approved`,
+          });
           setOvertimeRequests(prev => 
             prev.map(req => req.id === requestId ? { ...req, status: 'approved' } : req)
           );
@@ -116,6 +153,12 @@ const AdminPage = () => {
       if (type === 'leave') {
         result = await updateLeaveStatus(requestId, 'rejected');
         if (result.success) {
+          const request = leaveRequests.find(r => r.id === requestId);
+          // Log activity for the employee
+          await addActivity(request.userId, {
+            type: 'Leave Rejected',
+            description: `Your ${request.type} request has been rejected`,
+          });
           setLeaveRequests(prev => 
             prev.map(req => req.id === requestId ? { ...req, status: 'rejected' } : req)
           );
@@ -123,6 +166,12 @@ const AdminPage = () => {
       } else if (type === 'time') {
         result = await updateTimeAdjustmentStatus(requestId, 'rejected');
         if (result.success) {
+          const request = timeAdjustments.find(r => r.id === requestId);
+          // Log activity for the employee
+          await addActivity(request.userId, {
+            type: 'Time Adjustment Rejected',
+            description: `Your time adjustment request for ${request.date} has been rejected`,
+          });
           setTimeAdjustments(prev => 
             prev.map(req => req.id === requestId ? { ...req, status: 'rejected' } : req)
           );
@@ -130,6 +179,12 @@ const AdminPage = () => {
       } else if (type === 'overtime') {
         result = await updateOvertimeStatus(requestId, 'rejected');
         if (result.success) {
+          const request = overtimeRequests.find(r => r.id === requestId);
+          // Log activity for the employee
+          await addActivity(request.userId, {
+            type: 'Overtime Rejected',
+            description: `Your overtime request for ${request.hours} hours has been rejected`,
+          });
           setOvertimeRequests(prev => 
             prev.map(req => req.id === requestId ? { ...req, status: 'rejected' } : req)
           );
@@ -144,6 +199,37 @@ const AdminPage = () => {
     } catch (error) {
       alert('Error rejecting request: ' + error.message);
     }
+  };
+
+  const handleAddEmployee = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    // Pass admin credentials to maintain session after creating new user
+    const result = await addEmployee(newEmployee, user.email, prompt('Please enter your password to confirm:'));
+    
+    if (result.success) {
+      alert('Employee added successfully!');
+      setEmployees(prev => [result.data, ...prev]);
+      setShowAddEmployeeModal(false);
+      setNewEmployee({
+        email: '',
+        password: '',
+        name: '',
+        employeeId: '',
+        department: '',
+        position: '',
+        role: 'employee'
+      });
+    } else {
+      alert('Failed to add employee: ' + result.error);
+    }
+    
+    setLoading(false);
+  };
+
+  const handleEditEmployee = (employee) => {
+    alert('Edit employee feature - Coming soon!');
   };
 
   return (
@@ -221,6 +307,13 @@ const AdminPage = () => {
             >
               <span className="nav-icon">⏰</span>
               <span className="nav-text">Overtime Requests</span>
+            </button>
+            <button 
+              className={`nav-item ${activeSection === 'employees' ? 'active' : ''}`} 
+              onClick={() => setActiveSection('employees')}
+            >
+              <span className="nav-icon">👥</span>
+              <span className="nav-text">Employee Directory</span>
             </button>
           </nav>
         </aside>
@@ -473,9 +566,147 @@ const AdminPage = () => {
                 </div>
               </>
             )}
+
+            {activeSection === 'employees' && (
+              <>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px'}}>
+                  <h2 className="section-title" style={{marginBottom: 0}}>Employee Directory</h2>
+                  <button className="add-employee-btn" onClick={() => setShowAddEmployeeModal(true)}>
+                    ➕ Add Employee
+                  </button>
+                </div>
+                <div className="requests-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Position</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr><td colSpan="7" style={{textAlign: 'center'}}>Loading...</td></tr>
+                      ) : employees.length === 0 ? (
+                        <tr><td colSpan="7" style={{textAlign: 'center'}}>No employees found</td></tr>
+                      ) : (
+                        employees.map(employee => (
+                          <tr key={employee.id}>
+                            <td>{employee.employeeId}</td>
+                            <td>{employee.name}</td>
+                            <td>{employee.email}</td>
+                            <td>{employee.department}</td>
+                            <td>{employee.position}</td>
+                            <td>
+                              <span className={`status-badge ${employee.role === 'admin' ? 'approved' : 'pending'}`}>
+                                {employee.role}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="action-buttons">
+                                <button className="approve-btn" onClick={() => handleEditEmployee(employee)}>
+                                  ✏️ Edit
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         </main>
       </div>
+
+      {/* Add Employee Modal */}
+      {showAddEmployeeModal && (
+        <div className="modal-overlay" onClick={() => setShowAddEmployeeModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Add New Employee</h2>
+            <form onSubmit={handleAddEmployee}>
+              <div className="form-group">
+                <label>Full Name *</label>
+                <input
+                  type="text"
+                  value={newEmployee.name}
+                  onChange={(e) => setNewEmployee({...newEmployee, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Employee ID *</label>
+                <input
+                  type="text"
+                  value={newEmployee.employeeId}
+                  onChange={(e) => setNewEmployee({...newEmployee, employeeId: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Email *</label>
+                <input
+                  type="email"
+                  value={newEmployee.email}
+                  onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Password *</label>
+                <input
+                  type="password"
+                  value={newEmployee.password}
+                  onChange={(e) => setNewEmployee({...newEmployee, password: e.target.value})}
+                  required
+                  minLength="6"
+                />
+              </div>
+              <div className="form-group">
+                <label>Department</label>
+                <input
+                  type="text"
+                  value={newEmployee.department}
+                  onChange={(e) => setNewEmployee({...newEmployee, department: e.target.value})}
+                />
+              </div>
+              <div className="form-group">
+                <label>Position</label>
+                <input
+                  type="text"
+                  value={newEmployee.position}
+                  onChange={(e) => setNewEmployee({...newEmployee, position: e.target.value})}
+                />
+              </div>
+              <div className="form-group">
+                <label>Role *</label>
+                <select
+                  value={newEmployee.role}
+                  onChange={(e) => setNewEmployee({...newEmployee, role: e.target.value})}
+                  required
+                >
+                  <option value="employee">Employee</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="cancel-btn" onClick={() => setShowAddEmployeeModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="submit-btn">
+                  Add Employee
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

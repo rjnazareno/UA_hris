@@ -19,13 +19,14 @@ import { db } from "./config";
 // Log time in
 export const logTimeIn = async (userId, userData) => {
   try {
+    console.log('logTimeIn called with userId:', userId, 'userData:', userData);
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const timeLogId = `${userId}_${today}`;
     
     const timeLogData = {
       userId,
-      userName: userData.name,
-      employeeId: userData.employeeId,
+      userName: userData.name || userData.email || 'Unknown',
+      employeeId: userData.employeeId || 'N/A',
       date: today,
       timeIn: new Date().toISOString(),
       timeOut: null,
@@ -33,9 +34,13 @@ export const logTimeIn = async (userId, userData) => {
       createdAt: Timestamp.now(),
     };
 
+    console.log('Saving time log to Firestore:', timeLogId, timeLogData);
     await setDoc(doc(db, "timeLogs", timeLogId), timeLogData);
+    console.log('Time log saved successfully!');
+    
     return { success: true, data: timeLogData };
   } catch (error) {
+    console.error('Error in logTimeIn:', error);
     return { success: false, error: error.message };
   }
 };
@@ -43,17 +48,21 @@ export const logTimeIn = async (userId, userData) => {
 // Log time out
 export const logTimeOut = async (userId) => {
   try {
+    console.log('logTimeOut called with userId:', userId);
     const today = new Date().toISOString().split('T')[0];
     const timeLogId = `${userId}_${today}`;
     
+    console.log('Updating time log:', timeLogId);
     await updateDoc(doc(db, "timeLogs", timeLogId), {
       timeOut: new Date().toISOString(),
       status: 'completed',
       updatedAt: Timestamp.now(),
     });
+    console.log('Time out saved successfully!');
 
     return { success: true };
   } catch (error) {
+    console.error('Error in logTimeOut:', error);
     return { success: false, error: error.message };
   }
 };
@@ -101,25 +110,33 @@ export const getUserTimeLogs = async (userId, limit = 30) => {
 // Submit leave request
 export const submitLeaveRequest = async (userId, userData, leaveData) => {
   try {
+    console.log('submitLeaveRequest called:', { userId, userData, leaveData });
     const leaveRef = doc(collection(db, "leaveRequests"));
     
     const leaveRequest = {
       id: leaveRef.id,
       userId,
-      userName: userData.name,
-      employeeId: userData.employeeId,
+      userName: userData.name || userData.email || 'Unknown',
+      employeeId: userData.employeeId || 'N/A',
       type: leaveData.type,
       from: leaveData.from,
       to: leaveData.to,
       days: leaveData.days,
       reason: leaveData.reason || "",
+      hasAttachment: leaveData.hasAttachment || false,
+      attachmentName: leaveData.attachmentName || null,
+      attachmentType: leaveData.attachmentType || null,
       status: 'pending',
       createdAt: Timestamp.now(),
     };
 
+    console.log('Saving leave request to Firestore:', leaveRequest);
     await setDoc(leaveRef, leaveRequest);
+    console.log('Leave request saved successfully!');
+    
     return { success: true, data: leaveRequest };
   } catch (error) {
+    console.error('Error in submitLeaveRequest:', error);
     return { success: false, error: error.message };
   }
 };
@@ -348,6 +365,97 @@ export const getUserActivities = async (userId, limit = 10) => {
 
     return { success: true, data: activities.slice(0, limit) };
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// Get all user activities and requests combined
+export const getAllUserActivities = async (userId, limit = 20) => {
+  try {
+    const allActivities = [];
+
+    // Get regular activities (time in/out)
+    const activitiesQuery = query(
+      collection(db, "activities"),
+      where("userId", "==", userId),
+      orderBy("timestamp", "desc")
+    );
+    const activitiesSnapshot = await getDocs(activitiesQuery);
+    activitiesSnapshot.forEach((doc) => {
+      const data = doc.data();
+      allActivities.push({
+        id: doc.id,
+        type: data.type,
+        description: data.description,
+        timestamp: data.timestamp,
+        status: 'completed'
+      });
+    });
+
+    // Get leave requests
+    const leaveQuery = query(
+      collection(db, "leaveRequests"),
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc")
+    );
+    const leaveSnapshot = await getDocs(leaveQuery);
+    leaveSnapshot.forEach((doc) => {
+      const data = doc.data();
+      allActivities.push({
+        id: doc.id,
+        type: 'Leave Request',
+        description: `${data.type} - ${data.days} day(s)`,
+        timestamp: data.createdAt,
+        status: data.status
+      });
+    });
+
+    // Get overtime requests
+    const overtimeQuery = query(
+      collection(db, "overtimeRequests"),
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc")
+    );
+    const overtimeSnapshot = await getDocs(overtimeQuery);
+    overtimeSnapshot.forEach((doc) => {
+      const data = doc.data();
+      allActivities.push({
+        id: doc.id,
+        type: 'Overtime Request',
+        description: `${data.hours} hour(s) overtime`,
+        timestamp: data.createdAt,
+        status: data.status
+      });
+    });
+
+    // Get time adjustment requests
+    const adjustmentQuery = query(
+      collection(db, "timeAdjustments"),
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc")
+    );
+    const adjustmentSnapshot = await getDocs(adjustmentQuery);
+    adjustmentSnapshot.forEach((doc) => {
+      const data = doc.data();
+      allActivities.push({
+        id: doc.id,
+        type: 'Time Adjustment',
+        description: `Adjustment request for ${data.date}`,
+        timestamp: data.createdAt,
+        status: data.status
+      });
+    });
+
+    // Sort all activities by timestamp (most recent first)
+    allActivities.sort((a, b) => {
+      const timeA = a.timestamp?.toDate?.() || new Date(a.timestamp);
+      const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp);
+      return timeB - timeA;
+    });
+
+    return { success: true, data: allActivities.slice(0, limit) };
+  } catch (error) {
+    console.error('Error in getAllUserActivities:', error);
     return { success: false, error: error.message };
   }
 };

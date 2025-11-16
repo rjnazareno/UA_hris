@@ -20,14 +20,19 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthChange(async (firebaseUser) => {
       if (firebaseUser) {
         // User is signed in, get their data from Firestore
+        console.log('Firebase user authenticated:', firebaseUser.uid);
         const result = await getUserData(firebaseUser.uid);
+        console.log('getUserData result:', result);
         if (result.success) {
-          setUser({
+          const userData = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             ...result.data
-          });
+          };
+          console.log('Setting user data in context:', userData);
+          setUser(userData);
         } else {
+          console.log('Failed to get user data, using fallback');
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
