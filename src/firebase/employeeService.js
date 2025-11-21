@@ -17,19 +17,21 @@ import { db, auth } from "./config";
 // Get all employees
 export const getAllEmployees = async () => {
   try {
-    const q = query(
-      collection(db, "users"),
-      orderBy("createdAt", "desc")
-    );
+    console.log('=== FETCHING ALL EMPLOYEES ===');
+    const q = query(collection(db, "users"));
 
     const querySnapshot = await getDocs(q);
     const employees = [];
     querySnapshot.forEach((doc) => {
-      employees.push({ id: doc.id, ...doc.data() });
+      const data = { id: doc.id, uid: doc.id, ...doc.data() };
+      console.log('Employee found:', data);
+      employees.push(data);
     });
 
+    console.log('Total employees loaded:', employees.length);
     return { success: true, data: employees };
   } catch (error) {
+    console.error('Error fetching employees:', error);
     return { success: false, error: error.message };
   }
 };

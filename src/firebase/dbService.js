@@ -375,76 +375,94 @@ export const getAllUserActivities = async (userId, limit = 20) => {
     const allActivities = [];
 
     // Get regular activities (time in/out)
-    const activitiesQuery = query(
-      collection(db, "activities"),
-      where("userId", "==", userId),
-      orderBy("timestamp", "desc")
-    );
-    const activitiesSnapshot = await getDocs(activitiesQuery);
-    activitiesSnapshot.forEach((doc) => {
-      const data = doc.data();
-      allActivities.push({
-        id: doc.id,
-        type: data.type,
-        description: data.description,
-        timestamp: data.timestamp,
-        status: 'completed'
+    try {
+      const activitiesQuery = query(
+        collection(db, "activities"),
+        where("userId", "==", userId),
+        orderBy("timestamp", "desc")
+      );
+      const activitiesSnapshot = await getDocs(activitiesQuery);
+      activitiesSnapshot.forEach((doc) => {
+        const data = doc.data();
+        allActivities.push({
+          id: doc.id,
+          type: data.type,
+          description: data.description,
+          timestamp: data.timestamp,
+          status: 'completed'
+        });
       });
-    });
+    } catch (error) {
+      console.log('Activities query error (might need index):', error);
+    }
 
     // Get leave requests
-    const leaveQuery = query(
-      collection(db, "leaveRequests"),
-      where("userId", "==", userId),
-      orderBy("createdAt", "desc")
-    );
-    const leaveSnapshot = await getDocs(leaveQuery);
-    leaveSnapshot.forEach((doc) => {
-      const data = doc.data();
-      allActivities.push({
-        id: doc.id,
-        type: 'Leave Request',
-        description: `${data.type} - ${data.days} day(s)`,
-        timestamp: data.createdAt,
-        status: data.status
+    try {
+      const leaveQuery = query(
+        collection(db, "leaveRequests"),
+        where("userId", "==", userId)
+      );
+      const leaveSnapshot = await getDocs(leaveQuery);
+      leaveSnapshot.forEach((doc) => {
+        const data = doc.data();
+        allActivities.push({
+          id: doc.id,
+          type: 'Leave Request',
+          description: `${data.type} - ${data.days} day(s)`,
+          timestamp: data.createdAt,
+          status: data.status
+        });
       });
-    });
+      console.log('Leave requests found:', leaveSnapshot.size);
+    } catch (error) {
+      console.log('Leave requests query error:', error);
+    }
 
     // Get overtime requests
-    const overtimeQuery = query(
-      collection(db, "overtimeRequests"),
-      where("userId", "==", userId),
-      orderBy("createdAt", "desc")
-    );
-    const overtimeSnapshot = await getDocs(overtimeQuery);
-    overtimeSnapshot.forEach((doc) => {
-      const data = doc.data();
-      allActivities.push({
-        id: doc.id,
-        type: 'Overtime Request',
-        description: `${data.hours} hour(s) overtime`,
-        timestamp: data.createdAt,
-        status: data.status
+    try {
+      const overtimeQuery = query(
+        collection(db, "overtimeRequests"),
+        where("userId", "==", userId)
+      );
+      const overtimeSnapshot = await getDocs(overtimeQuery);
+      overtimeSnapshot.forEach((doc) => {
+        const data = doc.data();
+        allActivities.push({
+          id: doc.id,
+          type: 'Overtime Request',
+          description: `${data.hours} hour(s) overtime`,
+          timestamp: data.createdAt,
+          status: data.status
+        });
       });
-    });
+      console.log('Overtime requests found:', overtimeSnapshot.size);
+    } catch (error) {
+      console.log('Overtime requests query error:', error);
+    }
 
     // Get time adjustment requests
-    const adjustmentQuery = query(
-      collection(db, "timeAdjustments"),
-      where("userId", "==", userId),
-      orderBy("createdAt", "desc")
-    );
-    const adjustmentSnapshot = await getDocs(adjustmentQuery);
-    adjustmentSnapshot.forEach((doc) => {
-      const data = doc.data();
-      allActivities.push({
-        id: doc.id,
-        type: 'Time Adjustment',
-        description: `Adjustment request for ${data.date}`,
-        timestamp: data.createdAt,
-        status: data.status
+    try {
+      const adjustmentQuery = query(
+        collection(db, "timeAdjustments"),
+        where("userId", "==", userId)
+      );
+      const adjustmentSnapshot = await getDocs(adjustmentQuery);
+      adjustmentSnapshot.forEach((doc) => {
+        const data = doc.data();
+        allActivities.push({
+          id: doc.id,
+          type: 'Time Adjustment',
+          description: `Adjustment request for ${data.date}`,
+          timestamp: data.createdAt,
+          status: data.status
+        });
       });
-    });
+      console.log('Time adjustment requests found:', adjustmentSnapshot.size);
+    } catch (error) {
+      console.log('Time adjustment requests query error:', error);
+    }
+
+    console.log('Total activities collected:', allActivities.length);
 
     // Sort all activities by timestamp (most recent first)
     allActivities.sort((a, b) => {
@@ -456,6 +474,66 @@ export const getAllUserActivities = async (userId, limit = 20) => {
     return { success: true, data: allActivities.slice(0, limit) };
   } catch (error) {
     console.error('Error in getAllUserActivities:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ============= SCHEDULES =============
+
+// Get user schedules for a specific month
+export const getSchedules = async (userId, year, month) => {
+  try {
+    const q = query(
+      collection(db, "schedules"),
+      where("userId", "==", userId),
+      where("year", "==", year),
+      where("month", "==", month)
+    );
+
+    const querySnapshot = await getDocs(q);
+    const schedules = [];
+    querySnapshot.forEach((doc) => {
+      schedules.push({ id: doc.id, ...doc.data() });
+    });
+
+    return { success: true, data: schedules };
+  } catch (error) {
+    console.error('Error getting schedules:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Add new schedule
+export const addSchedule = async (scheduleData) => {
+  try {
+    const scheduleRef = doc(collection(db, "schedules"));
+    
+    const schedule = {
+      id: scheduleRef.id,
+      ...scheduleData,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+
+    await setDoc(scheduleRef, schedule);
+    return { success: true, data: schedule };
+  } catch (error) {
+    console.error('Error adding schedule:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Update existing schedule
+export const updateSchedule = async (scheduleId, scheduleData) => {
+  try {
+    await updateDoc(doc(db, "schedules", scheduleId), {
+      ...scheduleData,
+      updatedAt: Timestamp.now(),
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating schedule:', error);
     return { success: false, error: error.message };
   }
 };

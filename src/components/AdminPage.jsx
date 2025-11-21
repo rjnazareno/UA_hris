@@ -10,6 +10,7 @@ import {
   addActivity
 } from '../firebase/dbService';
 import { getAllEmployees, addEmployee, updateEmployee, deleteEmployee } from '../firebase/employeeService';
+import ScheduleCalendar from './ScheduleCalendar';
 import './AdminPage.css';
 
 const AdminPage = () => {
@@ -99,7 +100,7 @@ const AdminPage = () => {
       if (type === 'leave') {
         result = await updateLeaveStatus(requestId, 'approved');
         if (result.success) {
-          const request = leaveRequests.find(r => r.id === requestId);
+             const request = leaveRequests.find(r => r.id === requestId);
           // Log activity for the employee
           await addActivity(request.userId, {
             type: 'Leave Approved',
@@ -287,6 +288,30 @@ const AdminPage = () => {
               <span className="nav-icon">📊</span>
               <span className="nav-text">Dashboard</span>
             </button>
+
+            <div className="nav-divider">
+              <span className="divider-text">Management</span>
+            </div>
+
+            <button 
+              className={`nav-item ${activeSection === 'employees' ? 'active' : ''}`} 
+              onClick={() => setActiveSection('employees')}
+            >
+              <span className="nav-icon">👥</span>
+              <span className="nav-text">Employee Directory</span>
+            </button>
+            <button 
+              className={`nav-item ${activeSection === 'schedule' ? 'active' : ''}`} 
+              onClick={() => setActiveSection('schedule')}
+            >
+              <span className="nav-icon">📅</span>
+              <span className="nav-text">Schedule Calendar</span>
+            </button>
+
+            <div className="nav-divider">
+              <span className="divider-text">Requests</span>
+            </div>
+
             <button 
               className={`nav-item ${activeSection === 'leave' ? 'active' : ''}`} 
               onClick={() => setActiveSection('leave')}
@@ -307,13 +332,6 @@ const AdminPage = () => {
             >
               <span className="nav-icon">⏰</span>
               <span className="nav-text">Overtime Requests</span>
-            </button>
-            <button 
-              className={`nav-item ${activeSection === 'employees' ? 'active' : ''}`} 
-              onClick={() => setActiveSection('employees')}
-            >
-              <span className="nav-icon">👥</span>
-              <span className="nav-text">Employee Directory</span>
             </button>
           </nav>
         </aside>
@@ -621,6 +639,8 @@ const AdminPage = () => {
                 </div>
               </>
             )}
+
+            {activeSection === 'schedule' && <ScheduleCalendar isAdmin={true} />}
           </div>
         </main>
       </div>

@@ -92,25 +92,21 @@
 }
 
 .dropdown-toggle {
-  background: rgba(255, 255, 255, 0.2);
+  background: transparent;
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: none;
   padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 18px;
-  font-weight: 600;
+  border-radius: 4px;
+  font-size: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 40px;
-  min-height: 36px;
 }
 
 .dropdown-toggle:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .dropdown-menu {
@@ -179,6 +175,7 @@
   display: flex;
   flex: 1;
   width: 100%;
+  padding-top: 20px;
 }
 
 /* Sidebar Styles */

@@ -1,36 +1,29 @@
 /* Leave Request Page Styles */
 .leave-request-container {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  padding: 40px 20px;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0;
 }
 
 .leave-request-card {
   background: white;
-  border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  max-width: 700px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   width: 100%;
-  padding: 40px;
-  margin-top: 20px;
+  padding: 32px 40px;
 }
 
 .leave-title {
   font-size: 28px;
   font-weight: 700;
-  color: #2D3748;
+  color: #1a1a1a;
   margin: 0 0 8px 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
 .leave-subtitle {
-  color: #718096;
-  font-size: 14px;
+  color: #666;
+  font-size: 15px;
   margin: 0 0 32px 0;
 }
 
@@ -49,17 +42,18 @@
 .form-group label {
   font-size: 14px;
   font-weight: 600;
-  color: #4A5568;
+  color: #1a1a1a;
+  margin-bottom: 8px;
 }
 
 .form-group select,
 .form-group input,
 .form-group textarea {
-  padding: 12px 16px;
-  border: 2px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #2D3748;
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 15px;
+  color: #1a1a1a;
   background-color: white;
   transition: all 0.2s ease;
   font-family: inherit;
@@ -85,23 +79,23 @@
 }
 
 .days-display {
-  background: #F7FAFC;
-  border: 2px solid #E2E8F0;
+  background: linear-gradient(135deg, #fff5f0 0%, #ffe8dc 100%);
+  border: 1px solid #ffd4c0;
   border-radius: 8px;
-  padding: 16px;
+  padding: 20px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .days-label {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  color: #4A5568;
+  color: #1a1a1a;
 }
 
 .days-count {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   color: #FF6B35;
 }
@@ -154,9 +148,9 @@
 
 .cancel-btn,
 .submit-btn {
-  padding: 12px 32px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 14px 40px;
+  border-radius: 6px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -164,12 +158,14 @@
 }
 
 .cancel-btn {
-  background: #E2E8F0;
-  color: #4A5568;
+  background: #f5f5f5;
+  color: #666;
+  border: 1px solid #ddd;
 }
 
 .cancel-btn:hover {
-  background: #CBD5E0;
+  background: #ebebeb;
+  border-color: #ccc;
 }
 
 .submit-btn {
@@ -178,13 +174,13 @@
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #F7931E;
-  transform: translateY(-2px);
+  background: #e55a2b;
+  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
 }
 
 .submit-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -216,12 +212,8 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .leave-request-container {
-    padding: 20px 16px;
-  }
-
   .leave-request-card {
-    padding: 24px;
+    padding: 24px 20px;
   }
 
   .leave-title {
@@ -239,5 +231,9 @@
   .cancel-btn,
   .submit-btn {
     width: 100%;
+  }
+  
+  .days-display {
+    padding: 16px 20px;
   }
 }

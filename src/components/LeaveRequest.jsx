@@ -112,8 +112,8 @@ const LeaveRequest = () => {
   return (
     <div className="leave-request-container">
       <div className="leave-request-card">
-        <h2 className="leave-title">📋 Leave Request</h2>
-        <p className="leave-subtitle">Fill out the form below to request leave</p>
+        <h2 className="leave-title">Leave Request</h2>
+        <p className="leave-subtitle">Submit your leave application for approval</p>
 
         <form onSubmit={handleSubmit} className="leave-form">
           {/* Leave Type */}

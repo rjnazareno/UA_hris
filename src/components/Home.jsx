@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { logTimeIn, logTimeOut, getTodayTimeLog, getAllUserActivities, addActivity, getLeaveRequests, getOvertimeRequests, getTimeAdjustments } from '../firebase/dbService';
+import { logTimeIn, logTimeOut, getTodayTimeLog, getAllUserActivities, addActivity, getLeaveRequests, getOvertimeRequests, getTimeAdjustments, getSchedules } from '../firebase/dbService';
 import LeaveRequest from './LeaveRequest';
+import ScheduleCalendar from './ScheduleCalendar';
+import Profile from './Profile';
 import './Home.css';
 
 const Home = () => {
@@ -13,12 +15,17 @@ const Home = () => {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [todaySchedule, setTodaySchedule] = useState(null);
 
   // Load data function (can be called on mount and at midnight)
   const loadData = async () => {
     if (!user) return;
 
     setLoading(true);
+    
+    console.log('=== LOADING DATA FOR USER ===');
+    console.log('User ID:', user.uid);
+    console.log('User object:', user);
     
     // Load today's time log
     const timeLogResult = await getTodayTimeLog(user.uid);
@@ -38,15 +45,22 @@ const Home = () => {
     const activitiesResult = await getAllUserActivities(user.uid, 20);
     console.log('Activities result:', activitiesResult);
     if (activitiesResult.success) {
-      const formattedActivities = activitiesResult.data.map(activity => ({
-        id: activity.id,
-        type: activity.type,
-        time: activity.timestamp?.toDate ? new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
-        date: activity.timestamp?.toDate ? formatDate(activity.timestamp.toDate()) : 'N/A',
-        status: activity.status || 'completed',
-      }));
+      console.log('Raw activities data:', activitiesResult.data);
+      const formattedActivities = activitiesResult.data.map(activity => {
+        console.log('Formatting activity:', activity);
+        return {
+          id: activity.id,
+          type: activity.type,
+          time: activity.timestamp?.toDate ? new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
+          date: activity.timestamp?.toDate ? formatDate(activity.timestamp.toDate()) : 'N/A',
+          status: activity.status || 'completed',
+        };
+      });
       console.log('Formatted activities:', formattedActivities);
+      console.log('Setting activities state with', formattedActivities.length, 'items');
       setActivities(formattedActivities);
+    } else {
+      console.error('Failed to load activities:', activitiesResult.error);
     }
 
     // Load pending requests count
@@ -64,6 +78,18 @@ const Home = () => {
       pendingCount += adjustmentResult.data.filter(req => req.userId === user.uid && req.status === 'pending').length;
     }
     setPendingRequests(pendingCount);
+
+    // Load today's schedule
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    const schedulesResult = await getSchedules(user.uid, year, month);
+    if (schedulesResult.success) {
+      const todayScheduleData = schedulesResult.data.find(schedule => schedule.date === dateKey);
+      setTodaySchedule(todayScheduleData);
+    }
 
     setLoading(false);
   };
@@ -128,8 +154,7 @@ const Home = () => {
   };
 
   const handleViewProfile = () => {
-    // TODO: Implement profile view
-    alert('View Profile - Coming soon!');
+    setActiveMenu('profile');
     setDropdownOpen(false);
   };
 
@@ -264,7 +289,7 @@ const Home = () => {
                   setDropdownOpen(!dropdownOpen);
                 }}
               >
-                ⋮
+                ▼
               </button>
               {dropdownOpen && (
                 <div className="dropdown-menu">
@@ -307,7 +332,7 @@ const Home = () => {
             </button>
             <button className={`nav-item ${activeMenu === 'schedule' ? 'active' : ''}`} onClick={() => { setActiveMenu('schedule'); closeSidebar(); }}>
               <span className="nav-icon">📅</span>
-              <span className="nav-text">Request Change Schedule</span>
+              <span className="nav-text">Schedule Calendar</span>
             </button>
             <button className={`nav-item ${activeMenu === 'overtime' ? 'active' : ''}`} onClick={() => { setActiveMenu('overtime'); closeSidebar(); }}>
               <span className="nav-icon">⏰</span>
@@ -372,8 +397,28 @@ const Home = () => {
                 <div className="stat-icon-wrapper"><span className="stat-icon">📅</span></div>
                 <div className="stat-info">
                   <h3>Schedule Today</h3>
-                  <p className="stat-number">07:00 AM - 12:00 PM</p>
-                  <span className="stat-label stat-link">Official Schedule</span>
+                  {todaySchedule ? (
+                    <>
+                      <p className="stat-number">
+                        {(() => {
+                          const formatTime = (time24) => {
+                            const [hours, minutes] = time24.split(':');
+                            const hour = parseInt(hours);
+                            const period = hour >= 12 ? 'PM' : 'AM';
+                            const hour12 = hour % 12 || 12;
+                            return `${hour12}:${minutes} ${period}`;
+                          };
+                          return `${formatTime(todaySchedule.timeIn)} - ${formatTime(todaySchedule.timeOut)}`;
+                        })()}
+                      </p>
+                      <span className="stat-label">Official Schedule</span>
+                    </>
+                  ) : (
+                    <>
+                      <p className="stat-number">No schedule</p>
+                      <span className="stat-label">Not set for today</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -455,6 +500,8 @@ const Home = () => {
 
             {activeMenu === 'leave' && <LeaveRequest />}
 
+            {activeMenu === 'profile' && <Profile />}
+
             {activeMenu === 'news' && (
               <div style={{padding: '20px', textAlign: 'center'}}>
                 <h2>📰 News Feed</h2>
@@ -462,12 +509,7 @@ const Home = () => {
               </div>
             )}
 
-            {activeMenu === 'schedule' && (
-              <div style={{padding: '20px', textAlign: 'center'}}>
-                <h2>📅 Request Change Schedule</h2>
-                <p>Coming soon...</p>
-              </div>
-            )}
+            {activeMenu === 'schedule' && <ScheduleCalendar isAdmin={false} />}
 
             {activeMenu === 'overtime' && (
               <div style={{padding: '20px', textAlign: 'center'}}>

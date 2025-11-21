@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { listAllUsers } from '../utils/checkUsers';
+import { fixAdminAccount } from '../utils/fixAdminAccount';
 import './Login.css';
 
 const Login = () => {
@@ -13,6 +15,15 @@ const Login = () => {
   
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Check all users on component mount
+  useEffect(() => {
+    const initUsers = async () => {
+      await fixAdminAccount();
+      await listAllUsers();
+    };
+    initUsers();
+  }, []);
 
   // Redirect if already logged in
   if (isAuthenticated()) {
