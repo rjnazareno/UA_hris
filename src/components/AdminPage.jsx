@@ -395,6 +395,9 @@ const AdminPage = () => {
             >
               <span className="nav-icon">🌴</span>
               <span className="nav-text">Leave Requests</span>
+              {leaveRequests.filter(r => r.status === 'pending').length > 0 && (
+                <span className="nav-badge">{leaveRequests.filter(r => r.status === 'pending').length}</span>
+              )}
             </button>
             <button 
               className={`nav-item ${activeSection === 'time' ? 'active' : ''}`} 
@@ -402,6 +405,9 @@ const AdminPage = () => {
             >
               <span className="nav-icon">🕐</span>
               <span className="nav-text">Time Adjustments</span>
+              {timeAdjustments.filter(r => r.status === 'pending').length > 0 && (
+                <span className="nav-badge">{timeAdjustments.filter(r => r.status === 'pending').length}</span>
+              )}
             </button>
             <button 
               className={`nav-item ${activeSection === 'overtime' ? 'active' : ''}`} 
@@ -409,6 +415,9 @@ const AdminPage = () => {
             >
               <span className="nav-icon">⏰</span>
               <span className="nav-text">Overtime Requests</span>
+              {overtimeRequests.filter(r => r.status === 'pending').length > 0 && (
+                <span className="nav-badge">{overtimeRequests.filter(r => r.status === 'pending').length}</span>
+              )}
             </button>
           </nav>
         </aside>

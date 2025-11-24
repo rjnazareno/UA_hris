@@ -1,9 +1,17 @@
 /* Schedule Calendar Styles */
 .schedule-calendar-container {
-  padding: 32px 40px;
+  padding: 16px;
   max-width: 100%;
   width: 100%;
   box-sizing: border-box;
+}
+
+.schedule-main-container {
+  background: white;
+  border-radius: 16px;
+  padding: 32px 40px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  min-height: calc(100vh - 150px);
 }
 
 .calendar-header {

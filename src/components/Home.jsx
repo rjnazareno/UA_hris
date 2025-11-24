@@ -507,12 +507,10 @@ const Home = () => {
             <button className={`nav-item ${activeMenu === 'overtime' ? 'active' : ''}`} onClick={() => { setActiveMenu('overtime'); closeSidebar(); }}>
               <span className="nav-icon">⏰</span>
               <span className="nav-text">Overtime</span>
-              {pendingOvertime > 0 && <span className="nav-badge">{pendingOvertime}</span>}
             </button>
             <button className={`nav-item ${activeMenu === 'leave' ? 'active' : ''}`} onClick={() => { setActiveMenu('leave'); closeSidebar(); }}>
               <span className="nav-icon">🌴</span>
               <span className="nav-text">Leave</span>
-              {pendingLeave > 0 && <span className="nav-badge">{pendingLeave}</span>}
             </button>
           </nav>
           <div className="sidebar-footer">

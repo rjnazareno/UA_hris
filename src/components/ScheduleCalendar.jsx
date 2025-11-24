@@ -240,6 +240,7 @@ const ScheduleCalendar = ({ isAdmin = false }) => {
 
   return (
     <div className="schedule-calendar-container">
+      <div className="schedule-main-container">
       {isAdmin && (
         <div className="employee-selector">
           <div className="calendar-header">
@@ -389,6 +390,7 @@ const ScheduleCalendar = ({ isAdmin = false }) => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
