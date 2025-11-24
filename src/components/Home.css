@@ -240,6 +240,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
+  position: relative;
 }
 
 .nav-item:hover {
@@ -262,6 +263,21 @@
 
 .nav-text {
   flex: 1;
+}
+
+.nav-badge {
+  background: #E53E3E;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  box-shadow: 0 2px 4px rgba(229, 62, 62, 0.3);
 }
 
 /* Sidebar Footer with Employee Info */
@@ -337,8 +353,8 @@
 /* Welcome Banner */
 .welcome-banner {
   background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
-  border-radius: 16px;
-  padding: 48px 40px;
+  border-radius: 20px;
+  padding: 100px 64px;
   margin-bottom: 32px;
   color: white;
   display: flex;
@@ -348,14 +364,15 @@
 }
 
 .welcome-content h2 {
-  margin: 0 0 12px 0;
-  font-size: 36px;
+  margin: 0 0 16px 0;
+  font-size: 64px;
   font-weight: 700;
+  letter-spacing: -1px;
 }
 
 .welcome-content p {
   margin: 0;
-  font-size: 18px;
+  font-size: 28px;
   opacity: 0.95;
 }
 

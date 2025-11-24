@@ -15,6 +15,9 @@ const Home = () => {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [pendingLeave, setPendingLeave] = useState(0);
+  const [pendingOvertime, setPendingOvertime] = useState(0);
+  const [pendingTimeAdjustments, setPendingTimeAdjustments] = useState(0);
   const [todaySchedule, setTodaySchedule] = useState(null);
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [attendanceSearchDate, setAttendanceSearchDate] = useState('');
@@ -91,19 +94,30 @@ const Home = () => {
 
     // Load pending requests count
     let pendingCount = 0;
+    let leaveCount = 0;
+    let overtimeCount = 0;
+    let adjustmentCount = 0;
+    
     const leaveResult = await getLeaveRequests();
     if (leaveResult.success) {
-      pendingCount += leaveResult.data.filter(req => req.userId === user.uid && req.status === 'pending').length;
+      leaveCount = leaveResult.data.filter(req => req.userId === user.uid && req.status === 'pending').length;
+      pendingCount += leaveCount;
     }
     const overtimeResult = await getOvertimeRequests();
     if (overtimeResult.success) {
-      pendingCount += overtimeResult.data.filter(req => req.userId === user.uid && req.status === 'pending').length;
+      overtimeCount = overtimeResult.data.filter(req => req.userId === user.uid && req.status === 'pending').length;
+      pendingCount += overtimeCount;
     }
     const adjustmentResult = await getTimeAdjustments();
     if (adjustmentResult.success) {
-      pendingCount += adjustmentResult.data.filter(req => req.userId === user.uid && req.status === 'pending').length;
+      adjustmentCount = adjustmentResult.data.filter(req => req.userId === user.uid && req.status === 'pending').length;
+      pendingCount += adjustmentCount;
     }
+    
     setPendingRequests(pendingCount);
+    setPendingLeave(leaveCount);
+    setPendingOvertime(overtimeCount);
+    setPendingTimeAdjustments(adjustmentCount);
 
     // Load today's schedule
     const today = new Date();
@@ -493,10 +507,12 @@ const Home = () => {
             <button className={`nav-item ${activeMenu === 'overtime' ? 'active' : ''}`} onClick={() => { setActiveMenu('overtime'); closeSidebar(); }}>
               <span className="nav-icon">⏰</span>
               <span className="nav-text">Overtime</span>
+              {pendingOvertime > 0 && <span className="nav-badge">{pendingOvertime}</span>}
             </button>
             <button className={`nav-item ${activeMenu === 'leave' ? 'active' : ''}`} onClick={() => { setActiveMenu('leave'); closeSidebar(); }}>
               <span className="nav-icon">🌴</span>
               <span className="nav-text">Leave</span>
+              {pendingLeave > 0 && <span className="nav-badge">{pendingLeave}</span>}
             </button>
           </nav>
           <div className="sidebar-footer">
