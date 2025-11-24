@@ -84,13 +84,28 @@ export const getTodayTimeLog = async (userId) => {
   }
 };
 
+// Get time log for a specific date
+export const getTimeLogByDate = async (userId, date) => {
+  try {
+    const timeLogId = `${userId}_${date}`;
+    const timeLogDoc = await getDoc(doc(db, "timeLogs", timeLogId));
+    
+    if (timeLogDoc.exists()) {
+      return { success: true, data: timeLogDoc.data() };
+    }
+    return { success: true, data: null };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
 // Get time logs for a user (last 30 days)
 export const getUserTimeLogs = async (userId, limit = 30) => {
   try {
+    console.log('getUserTimeLogs called for userId:', userId);
     const q = query(
       collection(db, "timeLogs"),
-      where("userId", "==", userId),
-      orderBy("date", "desc")
+      where("userId", "==", userId)
     );
 
     const querySnapshot = await getDocs(q);
@@ -99,8 +114,22 @@ export const getUserTimeLogs = async (userId, limit = 30) => {
       timeLogs.push({ id: doc.id, ...doc.data() });
     });
 
-    return { success: true, data: timeLogs };
+    console.log('Time logs found:', timeLogs.length);
+    
+    // Sort by date in JavaScript to avoid needing a composite index
+    timeLogs.sort((a, b) => {
+      if (a.date > b.date) return -1;
+      if (a.date < b.date) return 1;
+      return 0;
+    });
+    
+    // Limit results
+    const limitedLogs = timeLogs.slice(0, limit);
+    console.log('Returning', limitedLogs.length, 'time logs');
+
+    return { success: true, data: limitedLogs };
   } catch (error) {
+    console.error('Error getting time logs:', error);
     return { success: false, error: error.message };
   }
 };
@@ -242,13 +271,56 @@ export const getTimeAdjustments = async (status = null) => {
 };
 
 // Update time adjustment status
-export const updateTimeAdjustmentStatus = async (adjustmentId, status, adminNote = "") => {
+export const updateTimeAdjustmentStatus = async (adjustmentId, status, adminNote = "", adjustmentData = null) => {
   try {
+    // Update the time adjustment request status
     await updateDoc(doc(db, "timeAdjustments", adjustmentId), {
       status,
       adminNote,
       processedAt: Timestamp.now(),
     });
+
+    // If approved, update the actual time log
+    if (status === 'approved' && adjustmentData) {
+      const { userId, date, requested } = adjustmentData;
+      const timeLogId = `${userId}_${date}`;
+      
+      // Get the existing time log
+      const timeLogRef = doc(db, "timeLogs", timeLogId);
+      const timeLogSnap = await getDoc(timeLogRef);
+      
+      if (timeLogSnap.exists()) {
+        // Convert HH:MM format to ISO date string
+        const convertTimeToISO = (dateString, timeString) => {
+          if (!timeString) return null;
+          const [hours, minutes] = timeString.split(':');
+          const dateObj = new Date(dateString);
+          dateObj.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+          return dateObj.toISOString();
+        };
+        
+        // Update the time log with requested times
+        const updateData = {
+          updatedAt: Timestamp.now(),
+          adjustedBy: 'admin',
+          adjustmentId: adjustmentId
+        };
+        
+        if (requested.timeIn) {
+          updateData.timeIn = convertTimeToISO(date, requested.timeIn);
+        }
+        if (requested.timeOut) {
+          updateData.timeOut = convertTimeToISO(date, requested.timeOut);
+        }
+        
+        // If both times are set, mark as completed
+        if (requested.timeIn && requested.timeOut) {
+          updateData.status = 'completed';
+        }
+        
+        await updateDoc(timeLogRef, updateData);
+      }
+    }
 
     return { success: true };
   } catch (error) {

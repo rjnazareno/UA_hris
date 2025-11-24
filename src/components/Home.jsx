@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { logTimeIn, logTimeOut, getTodayTimeLog, getAllUserActivities, addActivity, getLeaveRequests, getOvertimeRequests, getTimeAdjustments, getSchedules } from '../firebase/dbService';
+import { logTimeIn, logTimeOut, getTodayTimeLog, getAllUserActivities, addActivity, getLeaveRequests, getOvertimeRequests, getTimeAdjustments, getSchedules, getUserTimeLogs, submitOvertimeRequest, submitTimeAdjustment, getTimeLogByDate } from '../firebase/dbService';
 import LeaveRequest from './LeaveRequest';
 import ScheduleCalendar from './ScheduleCalendar';
 import Profile from './Profile';
@@ -16,6 +16,23 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [pendingRequests, setPendingRequests] = useState(0);
   const [todaySchedule, setTodaySchedule] = useState(null);
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
+  const [attendanceSearchDate, setAttendanceSearchDate] = useState('');
+  const [showOTModal, setShowOTModal] = useState(false);
+  const [otForm, setOtForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    hours: '',
+    reason: ''
+  });
+  const [showTimeAdjustModal, setShowTimeAdjustModal] = useState(false);
+  const [timeAdjustForm, setTimeAdjustForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    originalTimeIn: '',
+    originalTimeOut: '',
+    requestedTimeIn: '',
+    requestedTimeOut: '',
+    reason: ''
+  });
 
   // Load data function (can be called on mount and at midnight)
   const loadData = async () => {
@@ -31,9 +48,18 @@ const Home = () => {
     const timeLogResult = await getTodayTimeLog(user.uid);
     if (timeLogResult.success && timeLogResult.data) {
       const timeLog = timeLogResult.data;
+      
+      // Validate and format times
+      const formatTimeIfValid = (isoString) => {
+        if (!isoString) return null;
+        const date = new Date(isoString);
+        if (isNaN(date.getTime())) return null; // Invalid date
+        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      };
+      
       setTimeInOut({
-        timeIn: timeLog.timeIn ? new Date(timeLog.timeIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
-        timeOut: timeLog.timeOut ? new Date(timeLog.timeOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
+        timeIn: formatTimeIfValid(timeLog.timeIn),
+        timeOut: formatTimeIfValid(timeLog.timeOut),
       });
     } else {
       // No time log for today, reset display
@@ -89,6 +115,19 @@ const Home = () => {
     if (schedulesResult.success) {
       const todayScheduleData = schedulesResult.data.find(schedule => schedule.date === dateKey);
       setTodaySchedule(todayScheduleData);
+    }
+
+    // Load attendance history (last 10 days)
+    console.log('=== LOADING ATTENDANCE HISTORY ===');
+    console.log('Fetching time logs for user:', user.uid);
+    const attendanceResult = await getUserTimeLogs(user.uid, 10);
+    console.log('Attendance result:', attendanceResult);
+    if (attendanceResult.success) {
+      console.log('Setting attendance history with', attendanceResult.data.length, 'records');
+      setAttendanceHistory(attendanceResult.data);
+    } else {
+      console.error('Failed to load attendance:', attendanceResult.error);
+      setAttendanceHistory([]);
     }
 
     setLoading(false);
@@ -180,20 +219,10 @@ const Home = () => {
         description: `Logged time in at ${timeString}`,
       });
 
-      // Refresh activities
-      const activitiesResult = await getAllUserActivities(user.uid, 20);
-      if (activitiesResult.success) {
-        const formattedActivities = activitiesResult.data.map(activity => ({
-          id: activity.id,
-          type: activity.type,
-          time: activity.timestamp?.toDate ? new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
-          date: activity.timestamp?.toDate ? formatDate(activity.timestamp.toDate()) : 'N/A',
-          status: activity.status || 'completed',
-        }));
-        setActivities(formattedActivities);
-      }
+      // Refresh activities and reload data
+      await loadData();
       
-      alert('Time in logged successfully! Check your Firestore console.');
+      alert('Time in logged successfully!');
     } else {
       console.error('Time in failed:', result.error);
       alert('Failed to log time in: ' + result.error);
@@ -222,20 +251,10 @@ const Home = () => {
         description: `Logged time out at ${timeString}`,
       });
 
-      // Refresh activities
-      const activitiesResult = await getAllUserActivities(user.uid, 20);
-      if (activitiesResult.success) {
-        const formattedActivities = activitiesResult.data.map(activity => ({
-          id: activity.id,
-          type: activity.type,
-          time: activity.timestamp?.toDate ? new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
-          date: activity.timestamp?.toDate ? formatDate(activity.timestamp.toDate()) : 'N/A',
-          status: activity.status || 'completed',
-        }));
-        setActivities(formattedActivities);
-      }
+      // Refresh activities and reload data
+      await loadData();
       
-      alert('Time out logged successfully! Check your Firestore console.');
+      alert('Time out logged successfully!');
     } else {
       console.error('Time out failed:', result.error);
       alert('Failed to log time out: ' + result.error);
@@ -248,6 +267,143 @@ const Home = () => {
 
   const closeSidebar = () => {
     setSidebarOpen(false);
+  };
+
+  const fetchOriginalTimes = async (date) => {
+    if (!user || !date) return;
+    
+    const result = await getTimeLogByDate(user.uid, date);
+    if (result.success && result.data) {
+      const timeLog = result.data;
+      
+      // Convert ISO strings to HH:MM format for time inputs
+      const formatToTimeInput = (isoString) => {
+        if (!isoString) return '';
+        const date = new Date(isoString);
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+      };
+      
+      setTimeAdjustForm(prev => ({
+        ...prev,
+        originalTimeIn: formatToTimeInput(timeLog.timeIn),
+        originalTimeOut: formatToTimeInput(timeLog.timeOut),
+        requestedTimeIn: formatToTimeInput(timeLog.timeIn),
+        requestedTimeOut: formatToTimeInput(timeLog.timeOut)
+      }));
+    } else {
+      // No time log found for this date
+      setTimeAdjustForm(prev => ({
+        ...prev,
+        originalTimeIn: '',
+        originalTimeOut: '',
+        requestedTimeIn: '',
+        requestedTimeOut: ''
+      }));
+    }
+  };
+
+  const handleOTSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!otForm.hours || !otForm.reason) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    const result = await submitOvertimeRequest(user.uid, user, otForm);
+    
+    if (result.success) {
+      // Add activity log
+      await addActivity(user.uid, {
+        type: 'overtime_request',
+        description: `Requested ${otForm.hours} hours of overtime for ${otForm.date}`,
+      });
+
+      // Refresh activities
+      const activitiesResult = await getAllUserActivities(user.uid, 20);
+      if (activitiesResult.success) {
+        const formattedActivities = activitiesResult.data.map(activity => ({
+          id: activity.id,
+          type: activity.type,
+          time: activity.timestamp?.toDate ? new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
+          date: activity.timestamp?.toDate ? formatDate(activity.timestamp.toDate()) : 'N/A',
+          status: activity.status || 'completed',
+        }));
+        setActivities(formattedActivities);
+      }
+
+      // Reset form and close modal
+      setOtForm({
+        date: new Date().toISOString().split('T')[0],
+        hours: '',
+        reason: ''
+      });
+      setShowOTModal(false);
+      alert('Overtime request submitted successfully!');
+    } else {
+      alert('Failed to submit overtime request: ' + result.error);
+    }
+  };
+
+  const handleTimeAdjustmentSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!timeAdjustForm.reason || (!timeAdjustForm.requestedTimeIn && !timeAdjustForm.requestedTimeOut)) {
+      alert('Please provide a reason and at least one requested time change');
+      return;
+    }
+
+    const adjustmentData = {
+      date: timeAdjustForm.date,
+      original: {
+        timeIn: timeAdjustForm.originalTimeIn,
+        timeOut: timeAdjustForm.originalTimeOut
+      },
+      requested: {
+        timeIn: timeAdjustForm.requestedTimeIn || timeAdjustForm.originalTimeIn,
+        timeOut: timeAdjustForm.requestedTimeOut || timeAdjustForm.originalTimeOut
+      },
+      reason: timeAdjustForm.reason
+    };
+
+    const result = await submitTimeAdjustment(user.uid, user, adjustmentData);
+    
+    if (result.success) {
+      // Add activity log
+      await addActivity(user.uid, {
+        type: 'time_adjustment_request',
+        description: `Requested time adjustment for ${timeAdjustForm.date}`,
+      });
+
+      // Refresh activities
+      const activitiesResult = await getAllUserActivities(user.uid, 20);
+      if (activitiesResult.success) {
+        const formattedActivities = activitiesResult.data.map(activity => ({
+          id: activity.id,
+          type: activity.type,
+          time: activity.timestamp?.toDate ? new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
+          date: activity.timestamp?.toDate ? formatDate(activity.timestamp.toDate()) : 'N/A',
+          status: activity.status || 'completed',
+        }));
+        setActivities(formattedActivities);
+      }
+
+      // Reset form and close modal
+      setTimeAdjustForm({
+        date: new Date().toISOString().split('T')[0],
+        originalTimeIn: '',
+        originalTimeOut: '',
+        requestedTimeIn: '',
+        requestedTimeOut: '',
+        reason: ''
+      });
+      setShowTimeAdjustModal(false);
+      alert('Time adjustment request submitted successfully!');
+    } else {
+      alert('Failed to submit time adjustment request: ' + result.error);
+    }
   };
 
   React.useEffect(() => {
@@ -447,7 +603,10 @@ const Home = () => {
                     ✓ Shift Complete
                   </button>
                 )}
-                <button className="request-adjustment-link">Request Time Adjustment</button>
+                <button className="request-adjustment-link" onClick={() => {
+                  setShowTimeAdjustModal(true);
+                  fetchOriginalTimes(new Date().toISOString().split('T')[0]);
+                }}>Request Time Adjustment</button>
               </div>
               <div className="recent-activity-section">
                 <div className="section-header-with-filter">
@@ -495,6 +654,107 @@ const Home = () => {
                 </div>
               </div>
             </div>
+
+            <div className="attendance-history-section">
+              <div className="section-header-with-filter">
+                <h3>Attendance History</h3>
+                <div className="activity-filter">
+                  <input
+                    type="date"
+                    className="date-filter"
+                    value={attendanceSearchDate}
+                    onChange={(e) => setAttendanceSearchDate(e.target.value)}
+                    placeholder="Filter by date"
+                  />
+                  {attendanceSearchDate && (
+                    <button 
+                      className="clear-filter-btn"
+                      onClick={() => setAttendanceSearchDate('')}
+                      title="Clear filter"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="attendance-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Time In</th>
+                      <th>Time Out</th>
+                      <th>Hours Worked</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="5" style={{textAlign: 'center', padding: '20px', color: '#999'}}>
+                          Loading attendance...
+                        </td>
+                      </tr>
+                    ) : attendanceHistory.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" style={{textAlign: 'center', padding: '20px', color: '#999'}}>
+                          No attendance records yet
+                        </td>
+                      </tr>
+                    ) : (
+                      (() => {
+                        const filtered = attendanceHistory.filter(record => {
+                          if (!attendanceSearchDate) return true;
+                          return record.date === attendanceSearchDate;
+                        });
+                        
+                        if (filtered.length === 0 && attendanceSearchDate) {
+                          return (
+                            <tr>
+                              <td colSpan="5" style={{textAlign: 'center', padding: '20px', color: '#999'}}>
+                                No records found for {attendanceSearchDate}
+                              </td>
+                            </tr>
+                          );
+                        }
+                        
+                        return filtered.map(record => {
+                        const timeIn = record.timeIn ? new Date(record.timeIn) : null;
+                        const timeOut = record.timeOut ? new Date(record.timeOut) : null;
+                        
+                        // Check for invalid dates
+                        const isValidTimeIn = timeIn && !isNaN(timeIn.getTime());
+                        const isValidTimeOut = timeOut && !isNaN(timeOut.getTime());
+                        
+                        let hoursWorked = '--';
+                        
+                        if (isValidTimeIn && isValidTimeOut) {
+                          const diff = timeOut - timeIn;
+                          const hours = Math.floor(diff / (1000 * 60 * 60));
+                          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                          hoursWorked = `${hours}h ${minutes}m`;
+                        }
+                        
+                        return (
+                          <tr key={record.id}>
+                            <td>{record.date}</td>
+                            <td>{isValidTimeIn ? timeIn.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--'}</td>
+                            <td>{isValidTimeOut ? timeOut.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--'}</td>
+                            <td>{hoursWorked}</td>
+                            <td>
+                              <span className={`status-badge ${record.status}`}>
+                                {record.status === 'completed' ? 'Complete' : 'Active'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      });
+                      })()
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
               </>
             )}
 
@@ -512,9 +772,159 @@ const Home = () => {
             {activeMenu === 'schedule' && <ScheduleCalendar isAdmin={false} />}
 
             {activeMenu === 'overtime' && (
-              <div style={{padding: '20px', textAlign: 'center'}}>
-                <h2>⏰ Overtime Request</h2>
-                <p>Coming soon...</p>
+              <div className="overtime-container">
+                <div className="page-header">
+                  <h2>⏰ Overtime Requests</h2>
+                  <button className="primary-button" onClick={() => setShowOTModal(true)}>
+                    + Request Overtime
+                  </button>
+                </div>
+                <div className="overtime-content">
+                  <p className="info-text">Your overtime requests will appear here.</p>
+                </div>
+              </div>
+            )}
+
+            {/* OT Request Modal */}
+            {showOTModal && (
+              <div className="modal-overlay" onClick={() => setShowOTModal(false)}>
+                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h3>Request Overtime</h3>
+                    <button className="close-button" onClick={() => setShowOTModal(false)}>×</button>
+                  </div>
+                  <form onSubmit={handleOTSubmit}>
+                    <div className="form-group">
+                      <label>Date</label>
+                      <input
+                        type="date"
+                        value={otForm.date}
+                        onChange={(e) => setOtForm({ ...otForm, date: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Hours</label>
+                      <input
+                        type="number"
+                        min="0.5"
+                        max="12"
+                        step="0.5"
+                        value={otForm.hours}
+                        onChange={(e) => setOtForm({ ...otForm, hours: e.target.value })}
+                        placeholder="e.g., 2 or 2.5"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Reason</label>
+                      <textarea
+                        value={otForm.reason}
+                        onChange={(e) => setOtForm({ ...otForm, reason: e.target.value })}
+                        placeholder="Please provide a reason for overtime..."
+                        rows="4"
+                        required
+                      />
+                    </div>
+                    <div className="modal-actions">
+                      <button type="button" className="secondary-button" onClick={() => setShowOTModal(false)}>
+                        Cancel
+                      </button>
+                      <button type="submit" className="primary-button">
+                        Submit Request
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Time Adjustment Request Modal */}
+            {showTimeAdjustModal && (
+              <div className="modal-overlay" onClick={() => setShowTimeAdjustModal(false)}>
+                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h3>Request Time Adjustment</h3>
+                    <button className="close-button" onClick={() => setShowTimeAdjustModal(false)}>×</button>
+                  </div>
+                  <form onSubmit={handleTimeAdjustmentSubmit}>
+                    <div className="form-group">
+                      <label>Date</label>
+                      <input
+                        type="date"
+                        value={timeAdjustForm.date}
+                        max={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => {
+                          setTimeAdjustForm({ ...timeAdjustForm, date: e.target.value });
+                          fetchOriginalTimes(e.target.value);
+                        }}
+                        required
+                      />
+                    </div>
+                    <div className="form-section">
+                      <h4>Original Time (from records)</h4>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Time In</label>
+                          <input
+                            type="time"
+                            value={timeAdjustForm.originalTimeIn}
+                            readOnly
+                            className="readonly-input"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Time Out</label>
+                          <input
+                            type="time"
+                            value={timeAdjustForm.originalTimeOut}
+                            readOnly
+                            className="readonly-input"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="form-section">
+                      <h4>Requested Time (make your changes)</h4>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Time In</label>
+                          <input
+                            type="time"
+                            value={timeAdjustForm.requestedTimeIn}
+                            onChange={(e) => setTimeAdjustForm({ ...timeAdjustForm, requestedTimeIn: e.target.value })}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Time Out</label>
+                          <input
+                            type="time"
+                            value={timeAdjustForm.requestedTimeOut}
+                            onChange={(e) => setTimeAdjustForm({ ...timeAdjustForm, requestedTimeOut: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Reason for Adjustment</label>
+                      <textarea
+                        value={timeAdjustForm.reason}
+                        onChange={(e) => setTimeAdjustForm({ ...timeAdjustForm, reason: e.target.value })}
+                        placeholder="Please explain why you need this time adjustment..."
+                        rows="4"
+                        required
+                      />
+                    </div>
+                    <div className="modal-actions">
+                      <button type="button" className="secondary-button" onClick={() => setShowTimeAdjustModal(false)}>
+                        Cancel
+                      </button>
+                      <button type="submit" className="primary-button">
+                        Submit Request
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
           </div>

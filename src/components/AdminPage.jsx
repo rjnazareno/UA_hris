@@ -7,7 +7,8 @@ import {
   updateLeaveStatus,
   updateTimeAdjustmentStatus,
   updateOvertimeStatus,
-  addActivity
+  addActivity,
+  getUserTimeLogs
 } from '../firebase/dbService';
 import { getAllEmployees, addEmployee, updateEmployee, deleteEmployee } from '../firebase/employeeService';
 import ScheduleCalendar from './ScheduleCalendar';
@@ -23,6 +24,11 @@ const AdminPage = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportDateRange, setReportDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
   const [newEmployee, setNewEmployee] = useState({
     email: '',
     password: '',
@@ -94,6 +100,77 @@ const AdminPage = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [dropdownOpen]);
 
+  const handleGenerateReport = async () => {
+    if (!reportDateRange.startDate || !reportDateRange.endDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+
+    try {
+      // Fetch time logs for all employees
+      const allTimeLogs = [];
+      
+      for (const employee of employees) {
+        const result = await getUserTimeLogs(employee.uid, 1000);
+        if (result.success && result.data) {
+          const filteredLogs = result.data.filter(log => {
+            return log.date >= reportDateRange.startDate && log.date <= reportDateRange.endDate;
+          });
+          
+          filteredLogs.forEach(log => {
+            allTimeLogs.push({
+              employeeId: employee.employeeId,
+              employeeName: employee.name,
+              department: employee.department,
+              position: employee.position,
+              date: log.date,
+              timeIn: log.timeIn,
+              timeOut: log.timeOut,
+              status: log.status
+            });
+          });
+        }
+      }
+
+      // Sort by date and then by employee name
+      allTimeLogs.sort((a, b) => {
+        const dateCompare = a.date.localeCompare(b.date);
+        if (dateCompare !== 0) return dateCompare;
+        return a.employeeName.localeCompare(b.employeeName);
+      });
+
+      // Convert to CSV matching the screenshot format
+      const csvHeader = 'Log Date,Employee Name,Time In,Time Out\n';
+      const csvRows = allTimeLogs.map(log => {
+        // Format date properly
+        const logDate = new Date(log.date).toLocaleDateString('en-CA'); // YYYY-MM-DD format
+        const timeIn = log.timeIn ? new Date(log.timeIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+        const timeOut = log.timeOut ? new Date(log.timeOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
+        return `${logDate},${log.employeeName},${timeIn},${timeOut}`;
+      }).join('\n');
+      
+      const csvContent = csvHeader + csvRows;
+      
+      // Create and download CSV file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `time_logs_report_${reportDateRange.startDate}_to_${reportDateRange.endDate}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setShowReportModal(false);
+      setReportDateRange({ startDate: '', endDate: '' });
+      alert(`Report generated successfully! ${allTimeLogs.length} records exported.`);
+    } catch (error) {
+      console.error('Error generating report:', error);
+      alert('Failed to generate report: ' + error.message);
+    }
+  };
+
   const handleApprove = async (type, requestId) => {
     try {
       let result;
@@ -111,13 +188,13 @@ const AdminPage = () => {
           );
         }
       } else if (type === 'time') {
-        result = await updateTimeAdjustmentStatus(requestId, 'approved');
+        const request = timeAdjustments.find(r => r.id === requestId);
+        result = await updateTimeAdjustmentStatus(requestId, 'approved', '', request);
         if (result.success) {
-          const request = timeAdjustments.find(r => r.id === requestId);
           // Log activity for the employee
           await addActivity(request.userId, {
             type: 'Time Adjustment Approved',
-            description: `Your time adjustment request for ${request.date} has been approved`,
+            description: `Your time adjustment request for ${request.date} has been approved and time log has been updated`,
           });
           setTimeAdjustments(prev => 
             prev.map(req => req.id === requestId ? { ...req, status: 'approved' } : req)
@@ -340,7 +417,12 @@ const AdminPage = () => {
           <div className="admin-content">
             {activeSection === 'dashboard' && (
               <>
-                <h2 className="section-title">Dashboard Overview</h2>
+                <div className="welcome-banner">
+                  <div className="welcome-content">
+                    <h2>Welcome back, Admin 👋</h2>
+                    <p>Manage your team and oversee all HR operations</p>
+                  </div>
+                </div>
                 <div className="stats-grid">
                   <div className="stat-card stat-pending">
                     <div className="stat-icon-wrapper"><span className="stat-icon">⏳</span></div>
@@ -424,8 +506,8 @@ const AdminPage = () => {
 
             {activeSection === 'leave' && (
               <>
-                <h2 className="section-title">Leave Requests</h2>
                 <div className="requests-table">
+                  <h2 className="section-title" style={{marginBottom: '20px'}}>Leave Requests</h2>
                   <table>
                     <thead>
                       <tr>
@@ -479,8 +561,8 @@ const AdminPage = () => {
 
             {activeSection === 'time' && (
               <>
-                <h2 className="section-title">Time Adjustment Requests</h2>
                 <div className="requests-table">
+                  <h2 className="section-title" style={{marginBottom: '20px'}}>Time Adjustment Requests</h2>
                   <table>
                     <thead>
                       <tr>
@@ -503,8 +585,16 @@ const AdminPage = () => {
                           <tr key={request.id}>
                             <td>{request.userName || request.employee}</td>
                             <td>{request.date}</td>
-                            <td>{request.original}</td>
-                            <td>{request.requested}</td>
+                            <td>
+                              {request.original?.timeIn && request.original?.timeOut 
+                                ? `${request.original.timeIn} - ${request.original.timeOut}`
+                                : request.original?.timeIn || request.original?.timeOut || 'N/A'}
+                            </td>
+                            <td>
+                              {request.requested?.timeIn && request.requested?.timeOut 
+                                ? `${request.requested.timeIn} - ${request.requested.timeOut}`
+                                : request.requested?.timeIn || request.requested?.timeOut || 'N/A'}
+                            </td>
                             <td>{request.reason}</td>
                             <td>
                               <span className={`status-badge ${request.status}`}>
@@ -534,8 +624,8 @@ const AdminPage = () => {
 
             {activeSection === 'overtime' && (
               <>
-                <h2 className="section-title">Overtime Requests</h2>
                 <div className="requests-table">
+                  <h2 className="section-title" style={{marginBottom: '20px'}}>Overtime Requests</h2>
                   <table>
                     <thead>
                       <tr>
@@ -587,13 +677,18 @@ const AdminPage = () => {
 
             {activeSection === 'employees' && (
               <>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px'}}>
-                  <h2 className="section-title" style={{marginBottom: 0}}>Employee Directory</h2>
-                  <button className="add-employee-btn" onClick={() => setShowAddEmployeeModal(true)}>
-                    ➕ Add Employee
-                  </button>
-                </div>
                 <div className="requests-table">
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px'}}>
+                    <h2 className="section-title" style={{marginBottom: 0}}>Employee Directory</h2>
+                    <div style={{display: 'flex', gap: '12px'}}>
+                      <button className="generate-report-btn" onClick={() => setShowReportModal(true)}>
+                        📊 Generate Report
+                      </button>
+                      <button className="add-employee-btn" onClick={() => setShowAddEmployeeModal(true)}>
+                        ➕ Add Employee
+                      </button>
+                    </div>
+                  </div>
                   <table>
                     <thead>
                       <tr>
@@ -724,6 +819,55 @@ const AdminPage = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Generate Report Modal */}
+      {showReportModal && (
+        <div className="modal-overlay" onClick={() => setShowReportModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Generate Time Logs Report</h3>
+              <button className="close-modal" onClick={() => setShowReportModal(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <p style={{marginBottom: '20px', color: '#666'}}>
+                Select a date range to export employee time logs as CSV file
+              </p>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Start Date</label>
+                  <input
+                    type="date"
+                    value={reportDateRange.startDate}
+                    onChange={(e) => setReportDateRange({...reportDateRange, startDate: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>End Date</label>
+                  <input
+                    type="date"
+                    value={reportDateRange.endDate}
+                    onChange={(e) => setReportDateRange({...reportDateRange, endDate: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="cancel-btn" onClick={() => setShowReportModal(false)}>
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="submit-btn" 
+                onClick={handleGenerateReport}
+              >
+                📊 Generate & Download
+              </button>
+            </div>
           </div>
         </div>
       )}

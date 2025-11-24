@@ -217,6 +217,25 @@
   white-space: nowrap;
 }
 
+.calendar-day .schedule-time:contains('Day Off') {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Day Off styling */
+.calendar-day.has-schedule[data-shift-type="off"] {
+  background: #fef2f2;
+}
+
+.calendar-day.has-schedule[data-shift-type="off"]::after {
+  background: #dc2626;
+}
+
+.calendar-day.has-schedule[data-shift-type="off"] .schedule-time {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .schedule-legend {
   margin-top: 32px;
   padding: 24px;

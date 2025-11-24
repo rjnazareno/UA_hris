@@ -21,7 +21,8 @@ const ScheduleCalendar = ({ isAdmin = false }) => {
 
   const shiftPresets = [
     { value: '7-4', label: '7:00 AM - 4:00 PM', timeIn: '07:00', timeOut: '16:00' },
-    { value: '8-5', label: '8:00 AM - 5:00 PM', timeIn: '08:00', timeOut: '17:00' }
+    { value: '8-5', label: '8:00 AM - 5:00 PM', timeIn: '08:00', timeOut: '17:00' },
+    { value: 'off', label: 'Rest Day / Day Off', timeIn: '', timeOut: '' }
   ];
 
   useEffect(() => {
@@ -222,6 +223,9 @@ const ScheduleCalendar = ({ isAdmin = false }) => {
     const schedule = schedules[dateKey];
     
     if (schedule) {
+      if (schedule.shiftType === 'off') {
+        return 'Day Off';
+      }
       const timeIn = schedule.timeIn.substring(0, 5);
       const timeOut = schedule.timeOut.substring(0, 5);
       return `${timeIn} - ${timeOut}`;
@@ -236,17 +240,12 @@ const ScheduleCalendar = ({ isAdmin = false }) => {
 
   return (
     <div className="schedule-calendar-container">
-      <div className="calendar-header">
-        <h2 className="calendar-title">
-          {isAdmin ? 'Schedule Management' : 'My Schedule Calendar'}
-        </h2>
-        <p className="calendar-subtitle">
-          {isAdmin ? 'Manage employee schedules' : 'View your work schedule'}
-        </p>
-      </div>
-
       {isAdmin && (
         <div className="employee-selector">
+          <div className="calendar-header">
+            <h2 className="calendar-title">Schedule Management</h2>
+            <p className="calendar-subtitle">Manage employee schedules</p>
+          </div>
           <label htmlFor="employee-select">Select Employee:</label>
           <select
             id="employee-select"
@@ -262,6 +261,13 @@ const ScheduleCalendar = ({ isAdmin = false }) => {
               </option>
             ))}
           </select>
+        </div>
+      )}
+
+      {!isAdmin && (
+        <div className="calendar-header">
+          <h2 className="calendar-title">My Schedule Calendar</h2>
+          <p className="calendar-subtitle">View your work schedule</p>
         </div>
       )}
 
@@ -293,11 +299,13 @@ const ScheduleCalendar = ({ isAdmin = false }) => {
             const dateKey = formatDateKey(date);
             const hasSchedule = date && schedules[dateKey];
             const scheduleDisplay = getScheduleDisplay(date);
+            const shiftType = hasSchedule ? schedules[dateKey].shiftType : null;
 
             return (
               <div
                 key={index}
                 className={`calendar-day ${!date ? 'empty' : ''} ${isToday(date) ? 'today' : ''} ${hasSchedule ? 'has-schedule' : ''} ${isAdmin ? 'clickable' : ''}`}
+                data-shift-type={shiftType}
                 onClick={() => handleDateClick(date)}
               >
                 {date && (
@@ -337,24 +345,26 @@ const ScheduleCalendar = ({ isAdmin = false }) => {
               </select>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label>Time In</label>
-                <input
-                  type="time"
-                  value={scheduleForm.timeIn}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, timeIn: e.target.value, shiftType: 'custom' })}
-                />
+            {scheduleForm.shiftType !== 'off' && (
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Time In</label>
+                  <input
+                    type="time"
+                    value={scheduleForm.timeIn}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, timeIn: e.target.value, shiftType: 'custom' })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Time Out</label>
+                  <input
+                    type="time"
+                    value={scheduleForm.timeOut}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, timeOut: e.target.value, shiftType: 'custom' })}
+                  />
+                </div>
               </div>
-              <div className="form-group">
-                <label>Time Out</label>
-                <input
-                  type="time"
-                  value={scheduleForm.timeOut}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, timeOut: e.target.value, shiftType: 'custom' })}
-                />
-              </div>
-            </div>
+            )}
 
             <div className="modal-actions">
               <button className="cancel-btn" onClick={handleCancel}>Cancel</button>
