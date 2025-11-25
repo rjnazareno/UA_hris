@@ -30,6 +30,7 @@ const Home = () => {
   const [showTimeAdjustModal, setShowTimeAdjustModal] = useState(false);
   const [showActivityDetailModal, setShowActivityDetailModal] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
+  const [nextPayday, setNextPayday] = useState({ date: '', daysRemaining: 0, progress: 0 });
   const [timeAdjustForm, setTimeAdjustForm] = useState({
     date: new Date().toISOString().split('T')[0],
     originalTimeIn: '',
@@ -38,6 +39,49 @@ const Home = () => {
     requestedTimeOut: '',
     reason: ''
   });
+
+  // Calculate next payday (15th or 30th/end of month)
+  const calculateNextPayday = () => {
+    const today = new Date();
+    const currentDay = today.getDate();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    let paydayDate;
+    
+    // Determine next payday: 15th or 30th/end of month
+    if (currentDay < 15) {
+      // Next payday is the 15th of current month
+      paydayDate = new Date(currentYear, currentMonth, 15);
+    } else if (currentDay < 30) {
+      // Next payday is the 30th of current month (or last day if month has fewer days)
+      const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      paydayDate = new Date(currentYear, currentMonth, Math.min(30, lastDayOfMonth));
+    } else {
+      // Next payday is the 15th of next month
+      paydayDate = new Date(currentYear, currentMonth + 1, 15);
+    }
+    
+    // Calculate days remaining
+    const timeDiff = paydayDate - today;
+    const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+    
+    // Calculate progress (assuming 15-day pay period)
+    const daysSinceLastPayday = currentDay <= 15 ? currentDay : currentDay - 15;
+    const progress = Math.min(100, (daysSinceLastPayday / 15) * 100);
+    
+    const formattedDate = paydayDate.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    setNextPayday({
+      date: formattedDate,
+      daysRemaining: daysRemaining,
+      progress: Math.round(progress)
+    });
+  };
 
   // Load data function (can be called on mount and at midnight)
   const loadData = async () => {
@@ -220,6 +264,9 @@ const Home = () => {
       console.error('Failed to load attendance:', attendanceResult.error);
       setAttendanceHistory([]);
     }
+
+    // Calculate next payday
+    calculateNextPayday();
 
     setLoading(false);
   };
@@ -627,9 +674,15 @@ const Home = () => {
                 <div className="stat-icon-wrapper"><span className="stat-icon">💰</span></div>
                 <div className="stat-info">
                   <h3>Upcoming Payday</h3>
-                  <p className="stat-number">November 5, 2025</p>
-                  <div className="progress-bar"><div className="progress-fill" style={{width: '80%'}}></div></div>
-                  <span className="stat-label">4 days remaining</span>
+                  <p className="stat-number">{nextPayday.date || 'Calculating...'}</p>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{width: `${nextPayday.progress}%`}}></div>
+                  </div>
+                  <span className="stat-label">
+                    {nextPayday.daysRemaining === 0 ? 'Today!' : 
+                     nextPayday.daysRemaining === 1 ? '1 day remaining' : 
+                     `${nextPayday.daysRemaining} days remaining`}
+                  </span>
                 </div>
               </div>
               <div className="stat-card stat-requests">
