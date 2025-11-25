@@ -24,6 +24,8 @@ const AdminPage = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [showEditEmployeeModal, setShowEditEmployeeModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportDateRange, setReportDateRange] = useState({
     startDate: '',
@@ -142,11 +144,12 @@ const AdminPage = () => {
       // Convert to CSV matching the screenshot format
       const csvHeader = 'Log Date,Employee Name,Time In,Time Out\n';
       const csvRows = allTimeLogs.map(log => {
-        // Format date properly
-        const logDate = new Date(log.date).toLocaleDateString('en-CA'); // YYYY-MM-DD format
-        const timeIn = log.timeIn ? new Date(log.timeIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
-        const timeOut = log.timeOut ? new Date(log.timeOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
-        return `${logDate},${log.employeeName},${timeIn},${timeOut}`;
+        // Use date directly as it's already in YYYY-MM-DD format from database
+        const logDate = log.date || '';
+        const employeeName = (log.employeeName || '').padEnd(30, ' '); // Add padding for better column width
+        const timeIn = (log.timeIn ? new Date(log.timeIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '').padEnd(12, ' ');
+        const timeOut = (log.timeOut ? new Date(log.timeOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '').padEnd(12, ' ');
+        return `${logDate},${employeeName},${timeIn},${timeOut}`;
       }).join('\n');
       
       const csvContent = csvHeader + csvRows;
@@ -307,7 +310,50 @@ const AdminPage = () => {
   };
 
   const handleEditEmployee = (employee) => {
-    alert('Edit employee feature - Coming soon!');
+    // Prevent editing default admin
+    if (employee.employeeId === 'EMP001' || employee.email === 'resty.nazareno@novahr.com') {
+      alert('Cannot edit the default admin account.');
+      return;
+    }
+    
+    setEditingEmployee({
+      uid: employee.uid,
+      name: employee.name,
+      employeeId: employee.employeeId,
+      email: employee.email,
+      department: employee.department,
+      position: employee.position,
+      role: employee.role
+    });
+    setShowEditEmployeeModal(true);
+  };
+
+  const handleUpdateEmployee = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const result = await updateEmployee(editingEmployee.uid, {
+      name: editingEmployee.name,
+      employeeId: editingEmployee.employeeId,
+      department: editingEmployee.department,
+      position: editingEmployee.position,
+      role: editingEmployee.role
+    });
+
+    if (result.success) {
+      alert('Employee updated successfully!');
+      setShowEditEmployeeModal(false);
+      setEditingEmployee(null);
+      // Reload employees
+      const employeesResult = await getAllEmployees();
+      if (employeesResult.success) {
+        setEmployees(employeesResult.data);
+      }
+    } else {
+      alert('Failed to update employee: ' + result.error);
+    }
+    
+    setLoading(false);
   };
 
   return (
@@ -730,7 +776,15 @@ const AdminPage = () => {
                             </td>
                             <td>
                               <div className="action-buttons">
-                                <button className="approve-btn" onClick={() => handleEditEmployee(employee)}>
+                                <button 
+                                  className="approve-btn" 
+                                  onClick={() => handleEditEmployee(employee)}
+                                  disabled={employee.employeeId === 'EMP001' || employee.email === 'resty.nazareno@novahr.com'}
+                                  style={{
+                                    opacity: (employee.employeeId === 'EMP001' || employee.email === 'resty.nazareno@novahr.com') ? 0.5 : 1,
+                                    cursor: (employee.employeeId === 'EMP001' || employee.email === 'resty.nazareno@novahr.com') ? 'not-allowed' : 'pointer'
+                                  }}
+                                >
                                   ✏️ Edit
                                 </button>
                               </div>
@@ -825,6 +879,83 @@ const AdminPage = () => {
                 </button>
                 <button type="submit" className="submit-btn">
                   Add Employee
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Employee Modal */}
+      {showEditEmployeeModal && editingEmployee && (
+        <div className="modal-overlay" onClick={() => setShowEditEmployeeModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Edit Employee</h2>
+            <form onSubmit={handleUpdateEmployee}>
+              <div className="form-group">
+                <label>Full Name *</label>
+                <input
+                  type="text"
+                  value={editingEmployee.name}
+                  onChange={(e) => setEditingEmployee({...editingEmployee, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Employee ID *</label>
+                <input
+                  type="text"
+                  value={editingEmployee.employeeId}
+                  onChange={(e) => setEditingEmployee({...editingEmployee, employeeId: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Email *</label>
+                <input
+                  type="email"
+                  value={editingEmployee.email}
+                  disabled
+                  style={{backgroundColor: '#f0f0f0', cursor: 'not-allowed'}}
+                />
+                <small style={{color: '#718096', fontSize: '12px'}}>Email cannot be changed</small>
+              </div>
+              <div className="form-group">
+                <label>Department</label>
+                <input
+                  type="text"
+                  value={editingEmployee.department}
+                  onChange={(e) => setEditingEmployee({...editingEmployee, department: e.target.value})}
+                />
+              </div>
+              <div className="form-group">
+                <label>Position</label>
+                <input
+                  type="text"
+                  value={editingEmployee.position}
+                  onChange={(e) => setEditingEmployee({...editingEmployee, position: e.target.value})}
+                />
+              </div>
+              <div className="form-group">
+                <label>Role *</label>
+                <select
+                  value={editingEmployee.role}
+                  onChange={(e) => setEditingEmployee({...editingEmployee, role: e.target.value})}
+                  required
+                >
+                  <option value="employee">Employee</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="cancel-btn" onClick={() => {
+                  setShowEditEmployeeModal(false);
+                  setEditingEmployee(null);
+                }}>
+                  Cancel
+                </button>
+                <button type="submit" className="submit-btn">
+                  Update Employee
                 </button>
               </div>
             </form>

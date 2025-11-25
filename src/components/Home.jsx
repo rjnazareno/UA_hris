@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { logTimeIn, logTimeOut, getTodayTimeLog, getAllUserActivities, addActivity, getLeaveRequests, getOvertimeRequests, getTimeAdjustments, getSchedules, getUserTimeLogs, submitOvertimeRequest, submitTimeAdjustment, getTimeLogByDate } from '../firebase/dbService';
+import { logTimeIn, logTimeOut, getTodayTimeLog, getAllUserActivities, addActivity, getLeaveRequests, getOvertimeRequests, getTimeAdjustments, getSchedules, getUserTimeLogs, submitOvertimeRequest, submitTimeAdjustment, getTimeLogByDate, getActivityDetails } from '../firebase/dbService';
 import LeaveRequest from './LeaveRequest';
 import ScheduleCalendar from './ScheduleCalendar';
 import Profile from './Profile';
@@ -28,6 +28,8 @@ const Home = () => {
     reason: ''
   });
   const [showTimeAdjustModal, setShowTimeAdjustModal] = useState(false);
+  const [showActivityDetailModal, setShowActivityDetailModal] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState(null);
   const [timeAdjustForm, setTimeAdjustForm] = useState({
     date: new Date().toISOString().split('T')[0],
     originalTimeIn: '',
@@ -83,6 +85,9 @@ const Home = () => {
           time: activity.timestamp?.toDate ? new Date(activity.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
           date: activity.timestamp?.toDate ? formatDate(activity.timestamp.toDate()) : 'N/A',
           status: activity.status || 'completed',
+          description: activity.description || '',
+          // Preserve the original rawData from getAllUserActivities which contains full details
+          rawData: activity.rawData || activity
         };
       });
       console.log('Formatted activities:', formattedActivities);
@@ -136,9 +141,81 @@ const Home = () => {
     console.log('Fetching time logs for user:', user.uid);
     const attendanceResult = await getUserTimeLogs(user.uid, 10);
     console.log('Attendance result:', attendanceResult);
+    
+    // Fetch approved time adjustments to overlay on attendance
+    // Get all adjustments and filter in JavaScript to avoid Firestore index requirement
+    const adjustmentsResult = await getTimeAdjustments();
+    console.log('All adjustments result:', adjustmentsResult);
+    const approvedAdjustments = adjustmentsResult.success 
+      ? adjustmentsResult.data.filter(adj => {
+          const isApproved = adj.status === 'approved';
+          const isCurrentUser = adj.userId === user.uid;
+          console.log('Checking adjustment:', adj.id, 'userId:', adj.userId, 'date:', adj.date, 'status:', adj.status, 'isApproved:', isApproved, 'isCurrentUser:', isCurrentUser);
+          return isApproved && isCurrentUser;
+        })
+      : [];
+    console.log('Approved adjustments for current user:', approvedAdjustments);
+    
     if (attendanceResult.success) {
-      console.log('Setting attendance history with', attendanceResult.data.length, 'records');
-      setAttendanceHistory(attendanceResult.data);
+      // Generate last 10 days including dates without time logs
+      const allDates = [];
+      const today = new Date();
+      
+      for (let i = 0; i < 10; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD
+        
+        // Find if there's a time log for this date
+        let existingLog = attendanceResult.data.find(log => log.date === dateString);
+        
+        // Check if there's an approved time adjustment for this date
+        const adjustment = approvedAdjustments.find(adj => adj.date === dateString);
+        
+        console.log(`Date: ${dateString}, Has Log: ${!!existingLog}, Has Adjustment: ${!!adjustment}`);
+        if (adjustment) {
+          console.log('Adjustment data:', adjustment);
+        }
+        
+        if (adjustment) {
+          // If there's an approved adjustment, use the requested times
+          const convertTimeToISO = (dateString, timeString) => {
+            if (!timeString) return null;
+            const [hours, minutes] = timeString.split(':');
+            const dateObj = new Date(dateString);
+            dateObj.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+            return dateObj.toISOString();
+          };
+          
+          const adjustedLog = {
+            id: existingLog?.id || `adjusted_${dateString}`,
+            date: dateString,
+            userId: user.uid,
+            timeIn: convertTimeToISO(dateString, adjustment.requested.timeIn),
+            timeOut: convertTimeToISO(dateString, adjustment.requested.timeOut),
+            status: 'completed',
+            adjusted: true,
+            adjustmentId: adjustment.id
+          };
+          console.log('Created adjusted log:', adjustedLog);
+          allDates.push(adjustedLog);
+        } else if (existingLog) {
+          allDates.push(existingLog);
+        } else {
+          // Create a placeholder entry for dates without time logs
+          allDates.push({
+            id: `placeholder_${dateString}`,
+            date: dateString,
+            userId: user.uid,
+            timeIn: null,
+            timeOut: null,
+            status: 'absent'
+          });
+        }
+      }
+      
+      console.log('Setting attendance history with', allDates.length, 'records (including missing dates and adjustments)');
+      setAttendanceHistory(allDates);
     } else {
       console.error('Failed to load attendance:', attendanceResult.error);
       setAttendanceHistory([]);
@@ -631,9 +708,9 @@ const Home = () => {
                     <thead>
                       <tr>
                         <th>Activity</th>
-                        <th>Time</th>
                         <th>Date</th>
                         <th>Status</th>
+                        <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -653,12 +730,22 @@ const Home = () => {
                         activities.map(activity => (
                           <tr key={activity.id}>
                             <td>{activity.type}</td>
-                            <td>{activity.time}</td>
                             <td>{activity.date}</td>
                             <td>
                               <span className={`status-badge ${activity.status}`}>
                                 {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
                               </span>
+                            </td>
+                            <td>
+                              <button 
+                                className="view-btn"
+                                onClick={() => {
+                                  setSelectedActivity(activity);
+                                  setShowActivityDetailModal(true);
+                                }}
+                              >
+                                👁️ View
+                              </button>
                             </td>
                           </tr>
                         ))
@@ -752,12 +839,21 @@ const Home = () => {
                         return (
                           <tr key={record.id}>
                             <td>{record.date}</td>
-                            <td>{isValidTimeIn ? timeIn.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--'}</td>
-                            <td>{isValidTimeOut ? timeOut.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--'}</td>
+                            <td>
+                              {isValidTimeIn ? timeIn.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--'}
+                              {record.adjusted && <span className="adjusted-badge" title="Time adjusted by admin">✓</span>}
+                            </td>
+                            <td>
+                              {isValidTimeOut ? timeOut.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--'}
+                              {record.adjusted && <span className="adjusted-badge" title="Time adjusted by admin">✓</span>}
+                            </td>
                             <td>{hoursWorked}</td>
                             <td>
                               <span className={`status-badge ${record.status}`}>
-                                {record.status === 'completed' ? 'Complete' : 'Active'}
+                                {record.status === 'completed' ? 'Complete' : 
+                                 record.status === 'active' ? 'Active' :
+                                 record.status === 'absent' ? 'No Record' : 
+                                 record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                               </span>
                             </td>
                           </tr>
@@ -938,6 +1034,226 @@ const Home = () => {
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+
+            {/* Activity Detail Modal */}
+            {showActivityDetailModal && selectedActivity && (
+              <div className="modal-overlay" onClick={() => setShowActivityDetailModal(false)}>
+                <div className="modal-content activity-detail-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h3>Activity Details</h3>
+                    <button className="close-button" onClick={() => setShowActivityDetailModal(false)}>×</button>
+                  </div>
+                  <div className="activity-detail-body">
+                    <div className="detail-row">
+                      <span className="detail-label">Activity Type:</span>
+                      <span className="detail-value">{selectedActivity.type}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Date Submitted:</span>
+                      <span className="detail-value">{selectedActivity.date} at {selectedActivity.time}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Status:</span>
+                      <span className={`status-badge ${selectedActivity.status}`}>
+                        {selectedActivity.status.charAt(0).toUpperCase() + selectedActivity.status.slice(1)}
+                      </span>
+                    </div>
+                    
+                    {/* Time Adjustment specific fields */}
+                    {selectedActivity.type === 'Time Adjustment' && selectedActivity.rawData && (
+                      <>
+                        <div className="detail-section-header">Original Time</div>
+                        <div className="detail-row">
+                          <span className="detail-label">Time In:</span>
+                          <span className="detail-value">
+                            {(selectedActivity.rawData.original?.timeIn !== undefined && selectedActivity.rawData.original?.timeIn !== null) 
+                              ? (selectedActivity.rawData.original.timeIn || 'Not clocked in')
+                              : 'Not clocked in'}
+                          </span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="detail-label">Time Out:</span>
+                          <span className="detail-value">
+                            {(selectedActivity.rawData.original?.timeOut !== undefined && selectedActivity.rawData.original?.timeOut !== null)
+                              ? (selectedActivity.rawData.original.timeOut || 'Not clocked out')
+                              : 'Not clocked out'}
+                          </span>
+                        </div>
+                        
+                        <div className="detail-section-header">Requested Time</div>
+                        <div className="detail-row">
+                          <span className="detail-label">Time In:</span>
+                          <span className="detail-value">
+                            {(selectedActivity.rawData.requested?.timeIn !== undefined && selectedActivity.rawData.requested?.timeIn !== null && selectedActivity.rawData.requested?.timeIn !== '')
+                              ? selectedActivity.rawData.requested.timeIn
+                              : 'Not specified'}
+                          </span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="detail-label">Time Out:</span>
+                          <span className="detail-value">
+                            {(selectedActivity.rawData.requested?.timeOut !== undefined && selectedActivity.rawData.requested?.timeOut !== null && selectedActivity.rawData.requested?.timeOut !== '')
+                              ? selectedActivity.rawData.requested.timeOut
+                              : 'Not specified'}
+                          </span>
+                        </div>
+                        
+                        {(selectedActivity.rawData.reason || selectedActivity.rawData.description) && (
+                          <div className="detail-row">
+                            <span className="detail-label">Reason:</span>
+                            <span className="detail-value">{selectedActivity.rawData.reason || selectedActivity.rawData.description}</span>
+                          </div>
+                        )}
+                        
+                        {selectedActivity.rawData.date && (
+                          <div className="detail-row">
+                            <span className="detail-label">Adjustment Date:</span>
+                            <span className="detail-value">{selectedActivity.rawData.date}</span>
+                          </div>
+                        )}
+                        
+                        {selectedActivity.rawData.adminNote && (
+                          <div className="detail-row">
+                            <span className="detail-label">Admin Note:</span>
+                            <span className="detail-value">{selectedActivity.rawData.adminNote}</span>
+                          </div>
+                        )}
+                        
+                        {selectedActivity.rawData.processedAt && (
+                          <div className="detail-row">
+                            <span className="detail-label">Processed At:</span>
+                            <span className="detail-value">
+                              {new Date(selectedActivity.rawData.processedAt.toDate()).toLocaleString('en-US', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                hour12: true 
+                              })}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    
+                    {/* Leave Request specific fields */}
+                    {selectedActivity.type === 'Leave Request' && selectedActivity.rawData && (
+                      <>
+                        {selectedActivity.rawData.type && (
+                          <div className="detail-row">
+                            <span className="detail-label">Leave Type:</span>
+                            <span className="detail-value">{selectedActivity.rawData.type}</span>
+                          </div>
+                        )}
+                        {selectedActivity.rawData.from && (
+                          <div className="detail-row">
+                            <span className="detail-label">From:</span>
+                            <span className="detail-value">{selectedActivity.rawData.from}</span>
+                          </div>
+                        )}
+                        {selectedActivity.rawData.to && (
+                          <div className="detail-row">
+                            <span className="detail-label">To:</span>
+                            <span className="detail-value">{selectedActivity.rawData.to}</span>
+                          </div>
+                        )}
+                        {selectedActivity.rawData.days && (
+                          <div className="detail-row">
+                            <span className="detail-label">Days:</span>
+                            <span className="detail-value">{selectedActivity.rawData.days} day(s)</span>
+                          </div>
+                        )}
+                        {selectedActivity.rawData.reason && (
+                          <div className="detail-row">
+                            <span className="detail-label">Reason:</span>
+                            <span className="detail-value">{selectedActivity.rawData.reason}</span>
+                          </div>
+                        )}
+                        {selectedActivity.rawData.adminNote && (
+                          <div className="detail-row">
+                            <span className="detail-label">Admin Note:</span>
+                            <span className="detail-value">{selectedActivity.rawData.adminNote}</span>
+                          </div>
+                        )}
+                        {selectedActivity.rawData.processedAt && (
+                          <div className="detail-row">
+                            <span className="detail-label">Processed At:</span>
+                            <span className="detail-value">
+                              {new Date(selectedActivity.rawData.processedAt.toDate()).toLocaleString('en-US', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                hour12: true 
+                              })}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    
+                    {/* Overtime Request specific fields */}
+                    {selectedActivity.type === 'Overtime Request' && selectedActivity.rawData && (
+                      <>
+                        {selectedActivity.rawData.date && (
+                          <div className="detail-row">
+                            <span className="detail-label">Overtime Date:</span>
+                            <span className="detail-value">{selectedActivity.rawData.date}</span>
+                          </div>
+                        )}
+                        {selectedActivity.rawData.hours && (
+                          <div className="detail-row">
+                            <span className="detail-label">Hours:</span>
+                            <span className="detail-value">{selectedActivity.rawData.hours} hour(s)</span>
+                          </div>
+                        )}
+                        {selectedActivity.rawData.reason && (
+                          <div className="detail-row">
+                            <span className="detail-label">Reason:</span>
+                            <span className="detail-value">{selectedActivity.rawData.reason}</span>
+                          </div>
+                        )}
+                        {selectedActivity.rawData.adminNote && (
+                          <div className="detail-row">
+                            <span className="detail-label">Admin Note:</span>
+                            <span className="detail-value">{selectedActivity.rawData.adminNote}</span>
+                          </div>
+                        )}
+                        {selectedActivity.rawData.processedAt && (
+                          <div className="detail-row">
+                            <span className="detail-label">Processed At:</span>
+                            <span className="detail-value">
+                              {new Date(selectedActivity.rawData.processedAt.toDate()).toLocaleString('en-US', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                hour12: true 
+                              })}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    
+                    {selectedActivity.description && (
+                      <div className="detail-row">
+                        <span className="detail-label">Description:</span>
+                        <span className="detail-value">{selectedActivity.description}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="modal-actions">
+                    <button className="primary-button" onClick={() => setShowActivityDetailModal(false)}>
+                      Close
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

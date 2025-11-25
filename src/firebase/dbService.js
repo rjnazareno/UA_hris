@@ -482,7 +482,9 @@ export const getAllUserActivities = async (userId, limit = 20) => {
           type: 'Leave Request',
           description: `${data.type} - ${data.days} day(s)`,
           timestamp: data.createdAt,
-          status: data.status
+          status: data.status,
+          userId: data.userId,
+          rawData: data // Include full leave request data
         });
       });
       console.log('Leave requests found:', leaveSnapshot.size);
@@ -504,7 +506,9 @@ export const getAllUserActivities = async (userId, limit = 20) => {
           type: 'Overtime Request',
           description: `${data.hours} hour(s) overtime`,
           timestamp: data.createdAt,
-          status: data.status
+          status: data.status,
+          userId: data.userId,
+          rawData: data // Include full overtime request data
         });
       });
       console.log('Overtime requests found:', overtimeSnapshot.size);
@@ -526,7 +530,10 @@ export const getAllUserActivities = async (userId, limit = 20) => {
           type: 'Time Adjustment',
           description: `Adjustment request for ${data.date}`,
           timestamp: data.createdAt,
-          status: data.status
+          status: data.status,
+          userId: data.userId,
+          date: data.date,
+          rawData: data // Include full time adjustment data
         });
       });
       console.log('Time adjustment requests found:', adjustmentSnapshot.size);
@@ -607,5 +614,21 @@ export const updateSchedule = async (scheduleId, scheduleData) => {
   } catch (error) {
     console.error('Error updating schedule:', error);
     return { success: false, error: error.message };
+  }
+};
+
+// Get full details for an activity based on its type
+export const getActivityDetails = async (activity) => {
+  try {
+    // If rawData already exists (from getAllUserActivities), return it
+    if (activity.rawData) {
+      return { success: true, data: activity.rawData };
+    }
+    
+    // Otherwise return the activity data itself
+    return { success: true, data: activity };
+  } catch (error) {
+    console.error('Error getting activity details:', error);
+    return { success: false, error: error.message, data: activity };
   }
 };
